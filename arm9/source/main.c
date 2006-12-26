@@ -47,6 +47,7 @@ typedef enum {
   WALL,
   PLANT,
   SMOKE,
+  ASH,
   SPOUT,
   CERA,
   CERA2,
@@ -181,30 +182,67 @@ void majic(u8* buf, u16 x, u16 y) {
         mid[1] = NOTHING;
       if (CHANCE(0.9)) {
         // water + fire = steam
-             if (mid[2] == WATER) { mid[2] = STEAM; mid[1] = NOTHING; break; }
-        else if (mid[0] == WATER) { mid[0] = STEAM; mid[1] = NOTHING; break; }
-        else if (bot[0] == WATER) { bot[0] = STEAM; mid[1] = NOTHING; break; }
+        if (mid[2] == WATER) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+        if (mid[0] == WATER) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+        if (bot[0] == WATER) { bot[0] = STEAM; mid[1] = NOTHING; break; }
       }
       break;
     case PLANT:
-      if (CHANCE(0.2) &&
-          (bot[1] == FIRE ||
-           mid[0] == FIRE ||
-           mid[2] == FIRE ||
-           top[1] == FIRE))
-          mid[1] = FIRE; // burn
+      if (CHANCE(0.2)) {
+        // burn
+        if (bot[1] == FIRE) {
+          if (CHANCE(0.2)) { bot[1] = SMOKE; } mid[1] = FIRE; break; }
+        if (mid[0] == FIRE) {
+          if (CHANCE(0.2)) { mid[0] = SMOKE; } mid[1] = FIRE; break; }
+        if (mid[2] == FIRE) {
+          if (CHANCE(0.2)) { mid[2] = SMOKE; } mid[1] = FIRE; break; }
+        if (top[1] == FIRE) {
+          if (CHANCE(0.2)) { top[1] = SMOKE; } mid[1] = FIRE; break; }
+      }
       if (CHANCE(0.1) &&
           (top[1] == SALT || top[1] == SWATER ||
            mid[0] == SALT || mid[0] == SWATER ||
            mid[2] == SALT || mid[2] == SWATER ||
-           bot[1] == SALT || bot[1] == SWATER))
+           bot[1] == SALT || bot[1] == SWATER)) {
         mid[1] = NOTHING; // salt kills
+        break;
+      }
 
       // grooow, slurp
       if (CHANCE(0.1) && mid[0] == WATER) mid[0] = PLANT;
       if (CHANCE(0.1) && mid[2] == WATER) mid[2] = PLANT;
       if (CHANCE(0.1) && top[1] == WATER) top[1] = PLANT;
       if (CHANCE(0.1) && bot[1] == WATER) bot[1] = PLANT;
+      break;
+    case SMOKE:
+      if (CHANCE(0.4)) {
+        if (CHANCE(0.6)) {
+          if (CHANCE(0.5)) {
+            if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
+            if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
+          } else {
+            if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
+            if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
+          }
+        } else
+          if (top[1] == NOTHING) { top[1] = SMOKE; mid[1] = NOTHING; break; }
+      }
+      if (CHANCE(0.06)) { mid[1] = ASH; break; }
+      break;
+    case ASH:
+      if (CHANCE(0.8)) {
+        if (CHANCE(0.5)) {
+          if (CHANCE(0.5)) {
+            if (bot[0] == NOTHING) { bot[0] = ASH; mid[1] = NOTHING; break; }
+            if (bot[2] == NOTHING) { bot[2] = ASH; mid[1] = NOTHING; break; }
+          } else {
+            if (bot[2] == NOTHING) { bot[2] = ASH; mid[1] = NOTHING; break; }
+            if (bot[0] == NOTHING) { bot[0] = ASH; mid[1] = NOTHING; break; }
+          }
+        } else {
+          if (bot[1] == NOTHING) { bot[1] = ASH; mid[1] = NOTHING; break; }
+        }
+      }
       break;
     case SPOUT:
       if (CHANCE(0.05)) {
@@ -424,7 +462,8 @@ int main(void) {
   BG_PALETTE[FIRE] = RGB15(31,8,8);
   BG_PALETTE[WALL] = RGB15(16,16,16);
   BG_PALETTE[PLANT] = RGB15(4,25,4);
-  BG_PALETTE[SMOKE] = RGB15(14,14,14);
+  BG_PALETTE[SMOKE] = RGB15(10,10,10);
+  BG_PALETTE[ASH] = RGB15(10,10,10);
   BG_PALETTE[SPOUT] = RGB15(14,20,31);
   BG_PALETTE[CERA] = RGB15(29,27,25);
   BG_PALETTE[CERA2] = RGB15(29,27,25);
