@@ -1,0 +1,559 @@
+/*---------------------------------------------------------------------------------
+	$Id: template.c,v 1.4 2005/09/17 23:15:13 wntrmute Exp $
+
+	Basic Hello World
+
+	$Log: template.c,v $
+	Revision 1.4  2005/09/17 23:15:13  wntrmute
+	corrected iprintAt in templates
+	
+	Revision 1.3  2005/09/05 00:32:20  wntrmute
+	removed references to IPC struct
+	replaced with API functions
+	
+	Revision 1.2  2005/08/31 01:24:21  wntrmute
+	updated for new stdio support
+
+	Revision 1.1  2005/08/03 06:29:56  wntrmute
+	added templates
+
+
+---------------------------------------------------------------------------------*/
+#include <nds.h>
+#include <nds/arm9/console.h> //basic print funcionality
+#include <nds/arm9/trig_lut.h>
+#include <gbfs.h>
+
+#include "mem.h"
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "bresenham.h"
+
+#include "brushes_bin.h"
+#include "brushes_pal_bin.h"
+#include "selector_bin.h"
+#include "selector_pal_bin.h"
+#include "map_bin.h"
+
+#define CHANCE(n) (rand() < ((u32)((n)*RAND_MAX)))
+
+typedef enum {
+  NOTHING = 0,
+  SAND,
+  WATER,
+  FIRE,
+  WALL,
+  PLANT,
+  SMOKE,
+  SPOUT,
+  CERA,
+  CERA2,
+  UNID,
+  UNIDT,
+  OIL,
+  SWATER,
+  SALT,
+  SNOW,
+  STEAM,
+  CONDEN,
+  NUM_MATERIALS
+} MATERIAL;
+
+inline void addsome(MATERIAL type, u8* buf, u16 x) {
+  int i,j;
+  for (i = 1; i <= 4; i++)
+    for (j = -4; j <= 4; j++)
+      if (CHANCE(0.1))
+        buf[i*256+x+j] = type;
+}
+
+inline void spawn(u8* buf) {
+  addsome(SAND, buf, 51);
+  addsome(WATER, buf, 102);
+  addsome(SALT, buf, 153);
+  addsome(OIL, buf, 204);
+}
+
+void majic(u8* buf, u16 x, u16 y) {
+  u8* top = buf+(x-1)+(y-1)*256,
+    * mid = buf+(x-1)+(y)*256,
+    * bot = buf+(x-1)+(y+1)*256;
+  // ttt
+  // mxm
+  // bbb
+  // px = mid[1]
+  switch(mid[1]) {
+    case SAND:
+      if (CHANCE(0.95)) {
+        // gravity
+             if (bot[1] == NOTHING) bot[1] = SAND;
+        else if (bot[0] == NOTHING) bot[0] = SAND;
+        else if (bot[2] == NOTHING) bot[2] = SAND;
+        else if (mid[0] == NOTHING) mid[0] = SAND;
+        else if (mid[2] == NOTHING) mid[2] = SAND;
+        else break;
+        mid[1] = NOTHING;
+      } else if (CHANCE(0.25) && bot[1] == WATER) {
+        // sink below water
+        mid[1] = WATER;
+        bot[1] = SAND;
+      }
+      break;
+    case WATER:
+      if (CHANCE(0.95)) {
+        // gravity
+             if (bot[1] == NOTHING) bot[1] = WATER;
+        else if (bot[0] == NOTHING) bot[0] = WATER;
+        else if (bot[2] == NOTHING) bot[2] = WATER;
+        else if (mid[2] == NOTHING) mid[2] = WATER;
+        else if (mid[0] == NOTHING) mid[0] = WATER;
+        else break;
+        mid[1] = NOTHING;
+      }
+      break;
+    case SWATER:
+      if (CHANCE(0.95)) {
+        // gravity
+             if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; }
+        else if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; }
+        else if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; }
+        else if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; }
+        else if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; }
+        break;
+      }
+      if (bot[1] == WATER && CHANCE(0.5)) {
+        // sink below water
+        bot[1] = SWATER;
+        mid[1] = WATER;
+      }
+      break;
+    case UNID:
+      if (CHANCE(0.65)) {
+        if (bot[1] != UNIDT && bot[1] != PLANT) bot[1] = UNID;
+        if (top[1] != UNIDT && top[1] != PLANT) top[1] = UNID;
+        if (mid[0] != UNIDT && mid[0] != PLANT) mid[0] = UNID;
+        if (mid[2] != UNIDT && mid[2] != PLANT) mid[2] = UNID;
+      } else
+        mid[1] = UNIDT;
+      break;
+    case UNIDT:
+      if (CHANCE(0.02)) mid[1] = NOTHING;
+      break;
+    case CERA:
+      if (CHANCE(0.99)) break;
+      if (bot[1] == FIRE ||
+          mid[0] == FIRE ||
+          mid[2] == FIRE ||
+          top[1] == FIRE) {
+        mid[1] = FIRE;
+             if (bot[1] == NOTHING) bot[1] = CERA2;
+        else if (mid[2] == NOTHING) mid[2] = CERA2;
+        else if (mid[0] == NOTHING) mid[0] = CERA2;
+        else if (top[1] == NOTHING) top[1] = CERA2;
+      }
+      break;
+    case CERA2:
+      if (CHANCE(0.2)) break;
+      // slide stickily
+           if (bot[1] == NOTHING) bot[1] = CERA2, mid[1] = NOTHING;
+      else if (bot[0] == NOTHING) bot[0] = CERA2, mid[1] = NOTHING;
+      else if (bot[2] == NOTHING) bot[2] = CERA2, mid[1] = NOTHING;
+      else mid[1] = CERA; // dry
+      break;
+    case FIRE:
+      if (CHANCE(0.5)) {
+        // rand between 0 and 2, weighted double for 1
+        //u8 n = (rand() > RAND_MAX/4 ? (rand() < RAND_MAX*0.75 ? 1 : 2) : 0);
+        if (top[1] == NOTHING) top[1] = FIRE;
+      }
+      if (CHANCE(0.4) &&
+        // die if no nearby flammables
+        top[1] != PLANT &&
+        mid[0] != PLANT &&
+        mid[2] != PLANT &&
+        bot[1] != PLANT &&
+        top[1] != CERA &&
+        mid[0] != CERA &&
+        mid[2] != CERA &&
+        bot[1] != CERA)
+        mid[1] = NOTHING;
+      if (CHANCE(0.9)) {
+        // water + fire = steam
+             if (mid[2] == WATER) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+        else if (mid[0] == WATER) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+        else if (bot[0] == WATER) { bot[0] = STEAM; mid[1] = NOTHING; break; }
+      }
+      break;
+    case PLANT:
+      if (CHANCE(0.2) &&
+          (bot[1] == FIRE ||
+           mid[0] == FIRE ||
+           mid[2] == FIRE ||
+           top[1] == FIRE))
+          mid[1] = FIRE; // burn
+      if (CHANCE(0.1) &&
+          (top[1] == SALT || top[1] == SWATER ||
+           mid[0] == SALT || mid[0] == SWATER ||
+           mid[2] == SALT || mid[2] == SWATER ||
+           bot[1] == SALT || bot[1] == SWATER))
+        mid[1] = NOTHING; // salt kills
+
+      // grooow, slurp
+      if (CHANCE(0.1) && mid[0] == WATER) mid[0] = PLANT;
+      if (CHANCE(0.1) && mid[2] == WATER) mid[2] = PLANT;
+      if (CHANCE(0.1) && top[1] == WATER) top[1] = PLANT;
+      if (CHANCE(0.1) && bot[1] == WATER) bot[1] = PLANT;
+      break;
+    case SPOUT:
+      if (CHANCE(0.05)) {
+        if (top[1] == NOTHING) top[1] = WATER;
+        if (bot[1] == NOTHING) bot[1] = WATER;
+        if (mid[0] == NOTHING) mid[0] = WATER;
+        if (mid[2] == NOTHING) mid[2] = WATER;
+      }
+      if (CHANCE(0.9)) break;
+
+      // sand destroys spout
+      if (top[1] == SAND) mid[1] = SAND;
+      if (mid[0] == SAND) mid[1] = SAND;
+      if (mid[2] == SAND) mid[1] = SAND;
+      if (bot[1] == SAND) mid[1] = SAND;
+      break;
+    case OIL:
+      if (CHANCE(0.25))
+        if (bot[1] == FIRE ||
+            mid[0] == FIRE ||
+            mid[2] == FIRE ||
+            top[1] == FIRE) {
+          mid[0] = mid[1] = mid[2] = top[1] = bot[1] = FIRE; // boom! :)
+          break;
+        }
+      if (CHANCE(0.95)) {
+        // gravity
+             if (bot[1] == NOTHING) { bot[1] = OIL; mid[1] = NOTHING; break; }
+        else if (bot[0] == NOTHING) { bot[0] = OIL; mid[1] = NOTHING; break; }
+        else if (bot[2] == NOTHING) { bot[2] = OIL; mid[1] = NOTHING; break; }
+        else if (mid[2] == NOTHING) { mid[2] = OIL; mid[1] = NOTHING; break; }
+        else if (mid[0] == NOTHING) { mid[0] = OIL; mid[1] = NOTHING; break; }
+      }
+      if (CHANCE(0.95)) {
+             if (top[1] == WATER) { top[1] = OIL; mid[1] = WATER; break; }
+        else if (top[0] == WATER) { top[0] = OIL; mid[1] = WATER; break; }
+        else if (top[2] == WATER) { top[2] = OIL; mid[1] = WATER; break; }
+      }
+      if (CHANCE(0.3)) {
+             if (mid[2] == WATER) { mid[2] = OIL; mid[1] = WATER; break; }
+        else if (mid[0] == WATER) { mid[0] = OIL; mid[1] = WATER; break; }
+      }
+      break;
+    case SALT:
+      if (CHANCE(0.95)) {
+        // gravity
+             if (bot[1] == NOTHING) { bot[1] = SALT; mid[1] = NOTHING; break; }
+        else if (bot[0] == NOTHING) { bot[0] = SALT; mid[1] = NOTHING; break; }
+        else if (bot[2] == NOTHING) { bot[2] = SALT; mid[1] = NOTHING; break; }
+        else if (mid[2] == NOTHING) { mid[2] = SALT; mid[1] = NOTHING; break; }
+        else if (mid[0] == NOTHING) { mid[0] = SALT; mid[1] = NOTHING; break; }
+      }
+      if (CHANCE(0.9)) {
+             if (bot[1] == WATER) bot[1] = SWATER;
+        else if (top[1] == WATER) top[1] = SWATER;
+        else if (mid[0] == WATER) mid[0] = SWATER;
+        else if (mid[2] == WATER) mid[2] = SWATER;
+        else break;
+        mid[1] = NOTHING;
+      }
+      break;
+    case SNOW:
+      if ((bot[1] == FIRE || mid[0] == FIRE || mid[2] == FIRE || top[1] == FIRE)
+          && CHANCE(0.95)) {
+        mid[1] = WATER; break;
+      }
+      if (CHANCE(0.95)) {
+        // gravity
+        if (CHANCE(0.5)) {
+               if (bot[0] == NOTHING) { bot[0] = SNOW; mid[1] = NOTHING; break; }
+          else if (bot[2] == NOTHING) { bot[2] = SNOW; mid[1] = NOTHING; break; }
+        } else {
+               if (bot[2] == NOTHING) { bot[2] = SNOW; mid[1] = NOTHING; break; }
+          else if (bot[0] == NOTHING) { bot[0] = SNOW; mid[1] = NOTHING; break; }
+        }
+        if (bot[1] == NOTHING) { bot[1] = SNOW; mid[1] = NOTHING; break; }
+      }
+      if (CHANCE(0.01)) {
+        // melt in air
+        if (mid[0] == NOTHING || mid[2] == NOTHING ||
+            top[1] == NOTHING || bot[1] == NOTHING) { mid[1] = WATER; break; }
+        // turn water into snow
+        if (CHANCE(0.2)) {
+          if (mid[0] == WATER) { mid[0] = SNOW; break; }
+          if (mid[2] == WATER) { mid[2] = SNOW; break; }
+          if (bot[1] == WATER) { bot[1] = SNOW; break; }
+          if (top[1] == WATER) { top[1] = SNOW; break; }
+        }
+      }
+      if (CHANCE(0.8)) {
+        if (top[1] == SALT) { mid[1] = SWATER; top[1] = NOTHING; break; }
+        if (mid[0] == SALT) { mid[1] = SWATER; mid[0] = NOTHING; break; }
+        if (mid[2] == SALT) { mid[1] = SWATER; mid[2] = NOTHING; break; }
+        if (bot[1] == SALT) { mid[1] = SWATER; bot[1] = NOTHING; break; }
+      }
+      break;
+    case STEAM:
+      if (CHANCE(0.5)) {
+        if (top[1] == NOTHING || top[1] == WATER) {
+          mid[1] = top[1]; top[1] = STEAM; break; }
+        else if (top[0] == NOTHING || top[0] == WATER) {
+          mid[1] = top[0]; top[0] = STEAM; break; }
+        else if (top[2] == NOTHING || top[2] == WATER) {
+          mid[1] = top[2]; top[2] = STEAM; break; }
+        else if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+        else if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+      } else if (CHANCE(0.2) && top[1] == WALL || top[1] == CERA || top[1] == PLANT) {
+        mid[1] = CONDEN;
+      }
+      break;
+    case CONDEN:
+      if (CHANCE(0.01) || (top[0] != WALL && top[0] != PLANT && top[0] != CERA)) {
+        mid[1] = WATER; break; }
+      break;
+    default: break;
+  }
+}
+
+void calculate(u8* buf) {
+  static int counter = 0;
+  int x,y;
+
+  if (counter)
+    for (y = 191; y > 0; y--) // ^
+      for (x = 1; x < 255; x++) // ->
+        majic(buf,x,y);
+  else
+    for (y = 191; y > 0; y--) // ^
+      for (x = 255; x > 0; x--) // <-
+        majic(buf,x,y);
+  // drop a black rectangle over it all
+  memset32(buf, NOTHING, 64);
+  memset32(buf+192*256, NOTHING, 64);
+  for (y = 1; y < 256; y++)
+    buf[y*256] = buf[y*256+255] = NOTHING;
+  
+  counter = !counter; // go the other way next time
+}
+
+u32 __seed_val = 0xfeebdaed;
+
+inline void reseed() { __seed_val ^= IPC->rtc_seconds; }
+inline u32 myrand() {
+  return (__seed_val = (0xac458abe * __seed_val + 0x7dd8915c) % 0x55610be1);
+}
+
+inline void initOAM(SpriteRotation* rot) {
+  u8 i;
+  for (i = 0; i < 32; ++i) {
+    rot[i].filler1[0] = rot[i].filler2[0] =
+      rot[i].filler3[0] = rot[i].filler4[0] = ATTR0_DISABLED;
+    rot[i].filler1[1] = rot[i].filler1[2] =
+      rot[i].filler2[1] = rot[i].filler2[2] =
+      rot[i].filler3[1] = rot[i].filler3[2] =
+      rot[i].filler4[1] = rot[i].filler4[2] = 0;
+    rot[i].hdx = 256;
+    rot[i].hdy = 0;
+    rot[i].vdx = 0;
+    rot[i].vdy = 256;
+  }
+}
+
+inline void moveSprite(SpriteEntry *spr, u16 x, u16 y) {
+  spr->attribute[1] &= 0xfe00;
+  spr->attribute[1] |= (x & 0x01ff);
+  spr->attribute[0] &= 0xff00;
+  spr->attribute[0] |= (y & 0x00ff);
+}
+
+inline void rotSprite(SpriteRotation *rot, u16 angle) {
+  s16 s = SIN[angle & 0x1ff] >> 4;
+  s16 c = COS[angle & 0x1ff] >> 4;
+  rot->hdx = c;
+  rot->hdy = s;
+  rot->vdx = -s;
+  rot->vdy = c;
+}
+
+//---------------------------------------------------------------------------------
+int main(void) {
+//---------------------------------------------------------------------------------
+	touchPosition touch;
+  u8* buf = (u8*) malloc(256*192);
+  memset(buf, 0, 256*192);
+
+  irqInit();
+  irqEnable(IRQ_VBLANK);
+
+  /********
+   * GBFS *
+   ********/
+
+  //sysSetCartOwner(BUS_OWNER_ARM9);
+  //GBFS_FILE const* gbfs_file = find_first_gbfs_file((void*)0x08000000);
+
+  /************************
+   * Video Initialization *
+   ************************/
+
+  lcdSwap(); // main on bottom screen
+
+  // --**ooOO- Main BG -OOoo**--
+
+	videoSetMode(MODE_5_2D | DISPLAY_BG3_ACTIVE);
+
+	vramSetBankA(VRAM_A_MAIN_BG);
+
+  BG3_CR = BG_BMP8_256x256 | BG_PRIORITY(2);
+  BG3_XDX = 1 << 8;
+  BG3_XDY = 0;
+  BG3_YDX = 0;
+  BG3_YDY = 1 << 8;
+
+  BG_PALETTE[NOTHING] = RGB15(0,0,0);
+  BG_PALETTE[SAND] = RGB15(29,25,16);
+  BG_PALETTE[WATER] = RGB15(4,4,31);
+  BG_PALETTE[FIRE] = RGB15(31,8,8);
+  BG_PALETTE[WALL] = RGB15(16,16,16);
+  BG_PALETTE[PLANT] = RGB15(4,25,4);
+  BG_PALETTE[SMOKE] = RGB15(14,14,14);
+  BG_PALETTE[SPOUT] = RGB15(14,20,31);
+  BG_PALETTE[CERA] = RGB15(29,27,25);
+  BG_PALETTE[CERA2] = RGB15(29,27,25);
+  BG_PALETTE[UNID] = RGB15(31,0,31);
+  BG_PALETTE[UNIDT] = RGB15(31,0,0);
+  BG_PALETTE[OIL] = RGB15(16,8,8);
+  BG_PALETTE[SWATER] = RGB15(8,16,31);
+  BG_PALETTE[SALT] = RGB15(31,31,31);
+  BG_PALETTE[SNOW] = RGB15(25,25,25);
+  BG_PALETTE[STEAM] = RGB15(8,8,8);
+  BG_PALETTE[CONDEN] = RGB15(20,20,20);
+
+  // --**ooOO- Sub BG -OOoo**--
+
+  videoSetModeSub(MODE_0_2D | DISPLAY_BG0_ACTIVE |
+                  DISPLAY_SPR_ACTIVE | DISPLAY_SPR_1D);
+  vramSetBankC(VRAM_C_SUB_BG);
+  vramSetBankD(VRAM_D_SUB_SPRITE);
+
+  SUB_BG0_CR = BG_TILE_BASE(0) | BG_MAP_BASE(31) | BG_32x32 | BG_256_COLOR;
+  //memset32(BG_MAP_RAM_SUB(31), 0, 32*32/4);
+
+  // load brush tiles
+  //u32 len = 0;
+  //u16* data = (u16*) gbfs_get_obj(gbfs_file, "brushes.bin", &len);
+  memcpy32(BG_GFX_SUB, brushes_bin, brushes_bin_size>>2);
+  //data = (u16*) gbfs_get_obj(gbfs_file, "brushes.pal.bin", &len);
+  memcpy16(BG_PALETTE_SUB, brushes_pal_bin, brushes_pal_bin_size>>1);
+
+  // load selector sprite
+  //data = (u16*) gbfs_get_obj(gbfs_file, "selector.bin", &len);
+  memcpy32(SPRITE_GFX_SUB, selector_bin, selector_bin_size>>2);
+  //data = (u16*) gbfs_get_obj(gbfs_file, "selector.pal.bin", &len);
+  memcpy16(SPRITE_PALETTE_SUB, selector_pal_bin, selector_pal_bin_size>>1);
+
+  SpriteRotation selectorrot; // to be copied when the time is right
+  SpriteEntry selector;
+  selector.attribute[0] = ATTR0_ROTSCALE_DOUBLE | ATTR0_COLOR_256;
+  selector.attribute[1] = ATTR1_ROTDATA(0) | ATTR1_SIZE_16;
+  selector.attribute[2] = 0 | ATTR2_PRIORITY(0);
+  moveSprite(&selector, 24, 112);
+
+  u16 selectorangle = 0;
+  initOAM((SpriteRotation*)OAM_SUB);
+
+  // lay out them brush tiles
+  //data = (u16*) gbfs_get_obj(gbfs_file, "map.bin", &len);
+  memcpy16((u16*)BG_MAP_RAM_SUB(31), map_bin, map_bin_size>>1);
+
+  /*************
+   * Main Loop *
+   *************/
+
+  u8 selected = 1;
+  u8 brushes[] = {NOTHING, WALL,  SAND, SNOW,
+                  WATER,   PLANT, SALT, SPOUT,
+                  OIL,     FIRE,  CERA, UNID};
+
+  int touched_last = 0;
+  s16 lastx=0,lasty=0;
+	while(1) {
+    swiWaitForVBlank();
+    { // zot the sprite backbuffer to OAM
+      //memcpy(selectorrot.filler1, selector.attribute, 3);
+      memcpy32(OAM_SUB, &selector, 1);
+      ((SpriteRotation*)OAM_SUB)->hdx = selectorrot.hdx;
+      ((SpriteRotation*)OAM_SUB)->hdy = selectorrot.hdy;
+      ((SpriteRotation*)OAM_SUB)->vdx = selectorrot.vdx;
+      ((SpriteRotation*)OAM_SUB)->vdy = selectorrot.vdy;
+    }
+
+		touch=touchReadXY();
+    scanKeys();
+    u32 held = keysHeld(),
+        pressed = keysDown();
+
+    if (touched_last) {
+      bresenTrace(buf, lastx, lasty, touch.px, touch.py, brushes[selected]);
+      bresenTrace(buf, lastx-1, lasty, touch.px-1, touch.py, brushes[selected]);
+    }
+
+    // ERASER WALL SAND
+    // WATER  TREE SALT
+    // OIL    FIRE WAX  ???
+
+    if (pressed & KEY_LEFT) {
+      if (selected % 4 != 0) {
+        selected -= 1;
+        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+      }
+    }
+
+    if (pressed & KEY_RIGHT) {
+      if (selected % 4 != 3) {
+        selected += 1;
+        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+      }
+    }
+
+    if (pressed & KEY_UP) {
+      if (selected > 3) {
+        selected -= 4;
+        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+      }
+    }
+
+    if (pressed & KEY_DOWN) {
+      if (selected < 8) {
+        selected += 4;
+        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+      }
+    }
+
+    if (held & KEY_TOUCH) {
+      touched_last = 1;
+      lastx = touch.px;
+      lasty = touch.py;
+    } else {
+      touched_last = 0;
+    }
+
+    spawn(buf);
+    calculate(buf);
+    memcpy16(BG_GFX, buf, 256*192);
+
+    selectorangle += 3;
+    selectorangle &= 0x1ff;
+    rotSprite(&selectorrot, selectorangle);
+	}
+
+	return 0;
+}
