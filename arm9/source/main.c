@@ -350,7 +350,7 @@ void majic(u8* buf, u16 x, u16 y) {
         else if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
         else if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
       } else if (CHANCE(0.2) &&
-          top[1] == WALL || top[1] == CERA || top[1] == PLANT) {
+          (top[1] == WALL || top[1] == CERA || top[1] == PLANT)) {
         mid[1] = CONDEN;
       }
       break;
@@ -422,6 +422,22 @@ inline void rotSprite(SpriteRotation *rot, u16 angle) {
   rot->vdx = -s;
   rot->vdy = c;
 }
+
+const u16 arrow_pal_rot[] = {
+  RGB15(9,9,9),
+  RGB15(13,13,13),
+  RGB15(21,21,21),
+  RGB15(25,25,25),
+  RGB15(31,31,31),
+  RGB15(25,25,25),
+  RGB15(21,21,21),
+  RGB15(13,13,13),
+  RGB15(9,9,9),
+  RGB15(13,13,13),
+};
+
+SpriteEntry oam_back[128];
+SpriteRotation *const oam_back_rot = (SpriteRotation*)oam_back;
 
 //---------------------------------------------------------------------------------
 int main(void) {
@@ -501,12 +517,17 @@ int main(void) {
   //data = (u16*) gbfs_get_obj(gbfs_file, "selector.pal.bin", &len);
   memcpy16(SPRITE_PALETTE_SUB, selector_pal_bin, selector_pal_bin_size>>1);
 
-  SpriteRotation selectorrot; // to be copied when the time is right
-  SpriteEntry selector;
-  selector.attribute[0] = ATTR0_ROTSCALE_DOUBLE | ATTR0_COLOR_256;
-  selector.attribute[1] = ATTR1_ROTDATA(0) | ATTR1_SIZE_16;
-  selector.attribute[2] = 0 | ATTR2_PRIORITY(0);
-  moveSprite(&selector, 24, 112);
+  SpriteRotation *selectorrot = &oam_back_rot[0];
+  initOAM(selectorrot);
+  SpriteEntry *selector = &oam_back[0];
+  selector[0].attribute[0] = ATTR0_ROTSCALE_DOUBLE | ATTR0_COLOR_256;
+  selector[0].attribute[1] = ATTR1_ROTDATA(0) | ATTR1_SIZE_16;
+  selector[0].attribute[2] = 0 | ATTR2_PRIORITY(0);
+  moveSprite(&selector[0], 24, 112);
+  selector[1].attribute[0] = ATTR0_COLOR_256;
+  selector[1].attribute[1] = ATTR1_SIZE_8;
+  selector[1].attribute[2] = 8;
+  moveSprite(&selector[1], 256-24-10, 191-4-16*4);
 
   u16 selectorangle = 0;
   initOAM((SpriteRotation*)OAM_SUB);
@@ -523,18 +544,18 @@ int main(void) {
   u8 brushes[] = {NOTHING, WALL,  SAND, SNOW,
                   WATER,   PLANT, SALT, SPOUT,
                   OIL,     FIRE,  CERA, UNID};
+  u8 thickness = 0;
+  u32 thicknesses[] = {2,4,6,8};
 
+  u32 framecounter = 0;
   int touched_last = 0;
   s16 lastx=0,lasty=0;
 	while(1) {
     swiWaitForVBlank();
     { // zot the sprite backbuffer to OAM
-      //memcpy(selectorrot.filler1, selector.attribute, 3);
-      memcpy32(OAM_SUB, &selector, 1);
-      ((SpriteRotation*)OAM_SUB)->hdx = selectorrot.hdx;
-      ((SpriteRotation*)OAM_SUB)->hdy = selectorrot.hdy;
-      ((SpriteRotation*)OAM_SUB)->vdx = selectorrot.vdx;
-      ((SpriteRotation*)OAM_SUB)->vdy = selectorrot.vdy;
+      int i;
+      for (i = 0; i < 4; i++)
+        ((SpriteRotation*)OAM_SUB)[i] = oam_back_rot[i];
     }
 
 		touch=touchReadXY();
@@ -543,7 +564,9 @@ int main(void) {
         pressed = keysDown();
 
     if (touched_last) {
-      bresenThick(buf, lastx, lasty, touch.px, touch.py, brushes[selected], 4 << 16);
+      bresenThick(buf, lastx, lasty, touch.px, touch.py, brushes[selected], thicknesses[thickness] << 16);
+      bresenCircle(buf, lastx, lasty, thicknesses[thickness] >> 1, brushes[selected]);
+      bresenCircle(buf, touch.px, touch.py, thicknesses[thickness] >> 1, brushes[selected]);
     }
 
     // ERASER WALL SAND
@@ -553,35 +576,51 @@ int main(void) {
     if (pressed & KEY_LEFT) {
       if (selected % 4 != 0) {
         selected -= 1;
-        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_RIGHT) {
       if (selected % 4 != 3) {
         selected += 1;
-        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_UP) {
       if (selected > 3) {
         selected -= 4;
-        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_DOWN) {
       if (selected < 8) {
         selected += 4;
-        moveSprite(&selector, (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
+      }
+    }
+
+    if (pressed & KEY_X) {
+      if (thickness > 0) {
+        thickness--;
+        moveSprite(&selector[1], 256-24-10, 191-4-16*(4-thickness));
+      }
+    }
+
+    if (pressed & KEY_Y) {
+      if (thickness < 3) {
+        thickness++;
+        moveSprite(&selector[1], 256-24-10, 191-4-16*(4-thickness));
       }
     }
 
     if (held & KEY_TOUCH) {
-      touched_last = 1;
-      lastx = touch.px;
-      lasty = touch.py;
+      if (touch.px != 0 && touch.py != 0) { 
+        touched_last = 1;
+        lastx = touch.px;
+        lasty = touch.py;
+      }
     } else {
       touched_last = 0;
     }
@@ -590,9 +629,16 @@ int main(void) {
     calculate(buf);
     memcpy16(BG_GFX, buf, 256*192);
 
-    selectorangle += 3;
+    selectorangle += 10;
     selectorangle &= 0x1ff;
-    rotSprite(&selectorrot, selectorangle);
+    rotSprite(selectorrot, selectorangle);
+
+    // rotate the palette of the thickness selector arrow thingy
+    SPRITE_PALETTE_SUB[1] = arrow_pal_rot[framecounter];
+    SPRITE_PALETTE_SUB[2] = arrow_pal_rot[framecounter+1];
+    SPRITE_PALETTE_SUB[3] = arrow_pal_rot[framecounter+2];
+    framecounter += 1;
+    if (framecounter >= 7) framecounter = 0;
 	}
 
 	return 0;

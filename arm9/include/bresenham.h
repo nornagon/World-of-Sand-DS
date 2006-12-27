@@ -32,5 +32,6 @@ u8 getpx8(u8 x, u8 y) {
 
 void bresenTrace(u8* buf, u8 x1, u8 y1, u8 x2, u8 y2, u16 c);
 void bresenThick(u8* buf, int x1, int y1, int x2, int y2, u8 val, int width);
+void bresenCircle(u8* buf, s32 cx, s32 cy, s32 r, u8 val);
 
 #endif

@@ -1,4 +1,5 @@
 #include <bresenham.h>
+#include <string.h>
 
 void bresenTrace(u8* buf, u8 x1, u8 y1, u8 x2, u8 y2, u16 c)
 {
@@ -93,3 +94,80 @@ void bresenThick(u8* buf, int x1, int y1, int x2, int y2, u8 val, int width) {
     }
   }
 }
+
+
+void bresenCircle(u8* buf, s32 cx, s32 cy, s32 r, u8 val) {
+  s32 x = r, y = 1;
+  s32 xchg = 1 - 2*r, ychg = 3;
+  s32 raderr = 1;
+  while (x >= y) {
+    memset(buf+(cx-x)+256*(cy+y-1), val, 2*x);
+    memset(buf+(cx-x)+256*(cy-y), val, 2*x);
+    memset(buf+(cx-y)+256*(cy+x-1), val, 2*y);
+    memset(buf+(cx-y)+256*(cy-x), val, 2*y);
+    y++;
+    raderr += ychg;
+    ychg += 2;
+    if (2 * raderr + xchg > 0) {
+      x--;
+      raderr += xchg;
+      xchg += 2;
+    }
+  }
+}
+
+/*void bresenCircle(u8* buf, s32 x, s32 y, s32 r, u8 val) {
+  s32 cx = 0;
+  s32 cy = r;
+  s32 ocx = 0xffff;
+  s32 ocy = 0xffff;
+  s32 df = 1 - r;
+  s32 d_e = 3;
+  s32 d_se = -2 * r + 5;
+  s32 xpcx, xmcx, xpcy, xmcy;
+  s32 ypcy, ymcy, ypcx, ymcx;
+
+  if (r == 0) { buf[cx+256*cy] = val; return; }
+
+  do {
+    xpcx = x + cx;
+    xmcx = x - cx;
+    xpcy = x + cy;
+    xmcy = x - cy;
+    if (ocy != cy) {
+      if (cy > 0) {
+        ypcy = y + cy;
+        ymcy = y - cy;
+        memset(buf+xmcx+ypcy*256, val, xpcx - xmcx);
+        memset(buf+xmcx+ymcy*256, val, xpcx - xmcx);
+      } else {
+        memset(buf+xmcx+y*256, val, xpcx - xmcx);
+      }
+      ocy = cy;
+    }
+    if (ocx != cx) {
+      if (cx != cy) {
+        if (cx > 0) {
+          ypcx = y + cx;
+          ymcx = y - cx;
+          memset(buf+xmcy+ymcx*256, val, xpcy - xmcy);
+          memset(buf+xmcy+ypcx*256, val, xpcy - xmcy);
+        } else {
+          memset(buf+xmcy+y*256, val, xpcy - xmcy);
+        }
+      }
+      ocx = cx;
+    }
+    if (df < 0) {
+      df += d_e;
+      d_e += 2;
+      d_se += 2;
+    } else {
+      df += d_se;
+      d_e += 2;
+      d_se += 4;
+      cy--;
+    }
+    cx++;
+  } while (cx <= cy);
+}*/
