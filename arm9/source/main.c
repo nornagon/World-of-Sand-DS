@@ -62,6 +62,10 @@ typedef enum {
   NUM_MATERIALS
 } MATERIAL;
 
+inline bool liquid(MATERIAL m) {
+  return m == WATER || m == SWATER || m == OIL;
+}
+
 inline void addsome(MATERIAL type, u8* buf, u16 x) {
   int i,j;
   for (i = 1; i <= 4; i++)
@@ -117,12 +121,11 @@ void majic(u8* buf, u16 x, u16 y) {
     case SWATER:
       if (CHANCE(0.95)) {
         // gravity
-             if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; }
-        else if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; }
-        else if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; }
-        else if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; }
-        else if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; }
-        break;
+             if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; break; }
+        else if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; break; }
+        else if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; break; }
+        else if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; break; }
+        else if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; break; }
       }
       if (bot[1] == WATER && CHANCE(0.5)) {
         // sink below water
@@ -233,14 +236,14 @@ void majic(u8* buf, u16 x, u16 y) {
       if (CHANCE(0.8)) {
         if (CHANCE(0.5)) {
           if (CHANCE(0.5)) {
-            if (bot[0] == NOTHING) { bot[0] = ASH; mid[1] = NOTHING; break; }
-            if (bot[2] == NOTHING) { bot[2] = ASH; mid[1] = NOTHING; break; }
+            if (bot[0] == NOTHING || liquid(bot[0])) { mid[1] = bot[0]; bot[0] = ASH; break; }
+            if (bot[2] == NOTHING || liquid(bot[2])) { mid[1] = bot[2]; bot[2] = ASH; break; }
           } else {
-            if (bot[2] == NOTHING) { bot[2] = ASH; mid[1] = NOTHING; break; }
-            if (bot[0] == NOTHING) { bot[0] = ASH; mid[1] = NOTHING; break; }
+            if (bot[2] == NOTHING || liquid(bot[2])) { mid[1] = bot[2]; bot[2] = ASH; break; }
+            if (bot[0] == NOTHING || liquid(bot[0])) { mid[1] = bot[0]; bot[0] = ASH; break; }
           }
         } else {
-          if (bot[1] == NOTHING) { bot[1] = ASH; mid[1] = NOTHING; break; }
+          if (bot[1] == NOTHING || liquid(bot[1])) { mid[1] = bot[1]; bot[1] = ASH; break; }
         }
       }
       break;
@@ -341,14 +344,14 @@ void majic(u8* buf, u16 x, u16 y) {
       break;
     case STEAM:
       if (CHANCE(0.5)) {
-        if (top[1] == NOTHING || top[1] == WATER) {
+        if (top[1] == NOTHING || liquid(top[1])) {
           mid[1] = top[1]; top[1] = STEAM; break; }
-        else if (top[0] == NOTHING || top[0] == WATER) {
+        if (top[0] == NOTHING || liquid(top[0])) {
           mid[1] = top[0]; top[0] = STEAM; break; }
-        else if (top[2] == NOTHING || top[2] == WATER) {
+        if (top[2] == NOTHING || liquid(top[2])) {
           mid[1] = top[2]; top[2] = STEAM; break; }
-        else if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
-        else if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+        if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+        if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
       } else if (CHANCE(0.2) &&
           (top[1] == WALL || top[1] == CERA || top[1] == PLANT)) {
         mid[1] = CONDEN;
@@ -491,7 +494,7 @@ int main(void) {
   BG_PALETTE[SWATER] = RGB15(8,16,31);
   BG_PALETTE[SALT] = RGB15(31,31,31);
   BG_PALETTE[SNOW] = RGB15(25,25,25);
-  BG_PALETTE[STEAM] = RGB15(8,8,8);
+  BG_PALETTE[STEAM] = RGB15(17,17,17);
   BG_PALETTE[CONDEN] = RGB15(20,20,20);
 
   // --**ooOO- Sub BG -OOoo**--
