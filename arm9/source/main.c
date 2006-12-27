@@ -349,12 +349,14 @@ void majic(u8* buf, u16 x, u16 y) {
           mid[1] = top[2]; top[2] = STEAM; break; }
         else if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
         else if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
-      } else if (CHANCE(0.2) && top[1] == WALL || top[1] == CERA || top[1] == PLANT) {
+      } else if (CHANCE(0.2) &&
+          top[1] == WALL || top[1] == CERA || top[1] == PLANT) {
         mid[1] = CONDEN;
       }
       break;
     case CONDEN:
-      if (CHANCE(0.01) || (top[0] != WALL && top[0] != PLANT && top[0] != CERA)) {
+      if (CHANCE(0.01) ||
+          (top[0] != WALL && top[0] != PLANT && top[0] != CERA)) {
         mid[1] = WATER; break; }
       break;
     default: break;
@@ -376,7 +378,7 @@ void calculate(u8* buf) {
   // drop a black rectangle over it all
   memset32(buf, NOTHING, 64);
   memset32(buf+192*256, NOTHING, 64);
-  for (y = 1; y < 256; y++)
+  for (y = 1; y < 192; y++)
     buf[y*256] = buf[y*256+255] = NOTHING;
   
   counter = !counter; // go the other way next time
@@ -541,8 +543,7 @@ int main(void) {
         pressed = keysDown();
 
     if (touched_last) {
-      bresenTrace(buf, lastx, lasty, touch.px, touch.py, brushes[selected]);
-      bresenTrace(buf, lastx-1, lasty, touch.px-1, touch.py, brushes[selected]);
+      bresenThick(buf, lastx, lasty, touch.px, touch.py, brushes[selected], 4 << 16);
     }
 
     // ERASER WALL SAND
