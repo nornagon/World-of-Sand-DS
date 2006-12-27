@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bresenham.h"
+#include "mt19937ar.h" // mersenne twister
 
 #include "brushes_bin.h"
 #include "brushes_pal_bin.h"
@@ -37,7 +38,7 @@
 #include "selector_pal_bin.h"
 #include "map_bin.h"
 
-#define CHANCE(n) (rand() < ((u32)((n)*RAND_MAX)))
+#define CHANCE(n) (genrand_int32() < ((u32)((n)*0xffffffff)))
 
 typedef enum {
   NOTHING = 0,
@@ -84,22 +85,59 @@ bool LIQUID[] = {
   false, // CONDEN
 };
 
-inline void addsome(MATERIAL type, u8* buf, u16 x) {
-  int i,j;
-  for (i = 1; i <= 4; i++)
-    for (j = -4; j <= 4; j++)
-      if (CHANCE(0.1))
-        buf[i*256+x+j] = type;
+static inline void addsome(MATERIAL type, u8* buf, u16 x) {
+//  int i,j;
+//  for (i = 1; i <= 4; i++)
+//    for (j = -4; j <= 4; j++)
+//      if (CHANCE(0.1))
+//        buf[i*256+x+j] = type;
+// unroll'd!
+  if (CHANCE(0.1)) buf[1*256+x-4] = type;
+  if (CHANCE(0.1)) buf[1*256+x-3] = type;
+  if (CHANCE(0.1)) buf[1*256+x-2] = type;
+  if (CHANCE(0.1)) buf[1*256+x-1] = type;
+  if (CHANCE(0.1)) buf[1*256+x-0] = type;
+  if (CHANCE(0.1)) buf[1*256+x+1] = type;
+  if (CHANCE(0.1)) buf[1*256+x+2] = type;
+  if (CHANCE(0.1)) buf[1*256+x+3] = type;
+  if (CHANCE(0.1)) buf[1*256+x+4] = type;
+  if (CHANCE(0.1)) buf[2*256+x-4] = type;
+  if (CHANCE(0.1)) buf[2*256+x-3] = type;
+  if (CHANCE(0.1)) buf[2*256+x-2] = type;
+  if (CHANCE(0.1)) buf[2*256+x-1] = type;
+  if (CHANCE(0.1)) buf[2*256+x-0] = type;
+  if (CHANCE(0.1)) buf[2*256+x+1] = type;
+  if (CHANCE(0.1)) buf[2*256+x+2] = type;
+  if (CHANCE(0.1)) buf[2*256+x+3] = type;
+  if (CHANCE(0.1)) buf[2*256+x+4] = type;
+  if (CHANCE(0.1)) buf[3*256+x-4] = type;
+  if (CHANCE(0.1)) buf[3*256+x-3] = type;
+  if (CHANCE(0.1)) buf[3*256+x-2] = type;
+  if (CHANCE(0.1)) buf[3*256+x-1] = type;
+  if (CHANCE(0.1)) buf[3*256+x-0] = type;
+  if (CHANCE(0.1)) buf[3*256+x+1] = type;
+  if (CHANCE(0.1)) buf[3*256+x+2] = type;
+  if (CHANCE(0.1)) buf[3*256+x+3] = type;
+  if (CHANCE(0.1)) buf[3*256+x+4] = type;
+  if (CHANCE(0.1)) buf[4*256+x-4] = type;
+  if (CHANCE(0.1)) buf[4*256+x-3] = type;
+  if (CHANCE(0.1)) buf[4*256+x-2] = type;
+  if (CHANCE(0.1)) buf[4*256+x-1] = type;
+  if (CHANCE(0.1)) buf[4*256+x-0] = type;
+  if (CHANCE(0.1)) buf[4*256+x+1] = type;
+  if (CHANCE(0.1)) buf[4*256+x+2] = type;
+  if (CHANCE(0.1)) buf[4*256+x+3] = type;
+  if (CHANCE(0.1)) buf[4*256+x+4] = type;
 }
 
-inline void spawn(u8* buf) {
+static inline void spawn(u8* buf) {
   addsome(SAND, buf, 51);
   addsome(WATER, buf, 102);
   addsome(SALT, buf, 153);
   addsome(OIL, buf, 204);
 }
 
-void majic(u8* buf, u16 x, u16 y) {
+void majic(u8* buf, u32 x, u32 y) {
   u8* top = buf+(x-1)+(y-1)*256,
     * mid = buf+(x-1)+(y)*256,
     * bot = buf+(x-1)+(y+1)*256;
@@ -378,7 +416,6 @@ void majic(u8* buf, u16 x, u16 y) {
           (top[0] != WALL && top[0] != PLANT && top[0] != CERA)) {
         mid[1] = WATER; break; }
       break;
-    default: break;
   }
 }
 
@@ -570,6 +607,7 @@ int main(void) {
   int touched_last = 0;
   s16 lastx=0,lasty=0;
   swiWaitForVBlank(); // wait for things to settle down (hopefully)
+  init_genrand(IPC->rtc_seconds + IPC->rtc_minutes * 64 + IPC->rtc_hours * 4096);
 	while(1) {
     swiWaitForVBlank();
     { // zot the sprite backbuffer to OAM
