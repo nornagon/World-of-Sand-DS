@@ -62,9 +62,27 @@ typedef enum {
   NUM_MATERIALS
 } MATERIAL;
 
-inline bool liquid(MATERIAL m) {
-  return m == WATER || m == SWATER || m == OIL;
-}
+bool LIQUID[] = {
+  false, // NOTHING
+  false, // SAND
+  true, // WATER
+  false, // FIRE
+  false, // WALL
+  false, // PLANT
+  false, // SMOKE
+  false, // ASH
+  false, // SPOUT
+  false, // CERA
+  false, // CERA2
+  false, // UNID
+  false, // UNIDT
+  true, // OIL
+  true, // SWATER
+  false, // SALT
+  false, // SNOW
+  false, // STEAM
+  false, // CONDEN
+};
 
 inline void addsome(MATERIAL type, u8* buf, u16 x) {
   int i,j;
@@ -93,39 +111,37 @@ void majic(u8* buf, u16 x, u16 y) {
     case SAND:
       if (CHANCE(0.95)) {
         // gravity
-             if (bot[1] == NOTHING) bot[1] = SAND;
-        else if (bot[0] == NOTHING) bot[0] = SAND;
-        else if (bot[2] == NOTHING) bot[2] = SAND;
-        else if (mid[0] == NOTHING) mid[0] = SAND;
-        else if (mid[2] == NOTHING) mid[2] = SAND;
-        else break;
-        mid[1] = NOTHING;
-      } else if (CHANCE(0.25) && bot[1] == WATER) {
+        if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = SAND; break; }
+        if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = SAND; break; }
+        if (bot[2] == NOTHING) { mid[1] = NOTHING; bot[2] = SAND; break; }
+        if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = SAND; break; }
+        if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = SAND; break; }
+      } else
+      if (CHANCE(0.25) && bot[1] == WATER) {
         // sink below water
         mid[1] = WATER;
         bot[1] = SAND;
+        break;
       }
       break;
     case WATER:
       if (CHANCE(0.95)) {
         // gravity
-             if (bot[1] == NOTHING) bot[1] = WATER;
-        else if (bot[0] == NOTHING) bot[0] = WATER;
-        else if (bot[2] == NOTHING) bot[2] = WATER;
-        else if (mid[2] == NOTHING) mid[2] = WATER;
-        else if (mid[0] == NOTHING) mid[0] = WATER;
-        else break;
-        mid[1] = NOTHING;
+        if (bot[1] == NOTHING) { bot[1] = WATER; mid[1] = NOTHING; break; }
+        if (bot[0] == NOTHING) { bot[0] = WATER; mid[1] = NOTHING; break; }
+        if (bot[2] == NOTHING) { bot[2] = WATER; mid[1] = NOTHING; break; }
+        if (mid[2] == NOTHING) { mid[2] = WATER; mid[1] = NOTHING; break; }
+        if (mid[0] == NOTHING) { mid[0] = WATER; mid[1] = NOTHING; break; }
       }
       break;
     case SWATER:
       if (CHANCE(0.95)) {
         // gravity
-             if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; break; }
-        else if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; break; }
-        else if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; break; }
-        else if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; break; }
-        else if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; break; }
+        if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; break; }
+        if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; break; }
+        if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; break; }
+        if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; break; }
+        if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; break; }
       }
       if (bot[1] == WATER && CHANCE(0.5)) {
         // sink below water
@@ -230,20 +246,20 @@ void majic(u8* buf, u16 x, u16 y) {
         } else
           if (top[1] == NOTHING) { top[1] = SMOKE; mid[1] = NOTHING; break; }
       }
-      if (CHANCE(0.06)) { mid[1] = ASH; break; }
+      if (CHANCE(0.01)) { mid[1] = ASH; break; }
       break;
     case ASH:
       if (CHANCE(0.8)) {
         if (CHANCE(0.5)) {
           if (CHANCE(0.5)) {
-            if (bot[0] == NOTHING || liquid(bot[0])) { mid[1] = bot[0]; bot[0] = ASH; break; }
-            if (bot[2] == NOTHING || liquid(bot[2])) { mid[1] = bot[2]; bot[2] = ASH; break; }
+            if (bot[0] == NOTHING || LIQUID[bot[0]]) { mid[1] = bot[0]; bot[0] = ASH; break; }
+            if (bot[2] == NOTHING || LIQUID[bot[2]]) { mid[1] = bot[2]; bot[2] = ASH; break; }
           } else {
-            if (bot[2] == NOTHING || liquid(bot[2])) { mid[1] = bot[2]; bot[2] = ASH; break; }
-            if (bot[0] == NOTHING || liquid(bot[0])) { mid[1] = bot[0]; bot[0] = ASH; break; }
+            if (bot[2] == NOTHING || LIQUID[bot[2]]) { mid[1] = bot[2]; bot[2] = ASH; break; }
+            if (bot[0] == NOTHING || LIQUID[bot[0]]) { mid[1] = bot[0]; bot[0] = ASH; break; }
           }
         } else {
-          if (bot[1] == NOTHING || liquid(bot[1])) { mid[1] = bot[1]; bot[1] = ASH; break; }
+          if (bot[1] == NOTHING || LIQUID[bot[1]]) { mid[1] = bot[1]; bot[1] = ASH; break; }
         }
       }
       break;
@@ -344,11 +360,11 @@ void majic(u8* buf, u16 x, u16 y) {
       break;
     case STEAM:
       if (CHANCE(0.5)) {
-        if (top[1] == NOTHING || liquid(top[1])) {
+        if (top[1] == NOTHING || LIQUID[top[1]]) {
           mid[1] = top[1]; top[1] = STEAM; break; }
-        if (top[0] == NOTHING || liquid(top[0])) {
+        if (top[0] == NOTHING || LIQUID[top[0]]) {
           mid[1] = top[0]; top[0] = STEAM; break; }
-        if (top[2] == NOTHING || liquid(top[2])) {
+        if (top[2] == NOTHING || LIQUID[top[2]]) {
           mid[1] = top[2]; top[2] = STEAM; break; }
         if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
         if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
@@ -553,6 +569,7 @@ int main(void) {
   u32 framecounter = 0;
   int touched_last = 0;
   s16 lastx=0,lasty=0;
+  swiWaitForVBlank(); // wait for things to settle down (hopefully)
 	while(1) {
     swiWaitForVBlank();
     { // zot the sprite backbuffer to OAM
