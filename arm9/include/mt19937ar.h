@@ -55,6 +55,7 @@ void ITCM_CODE init_genrand(unsigned long s);
 //void init_by_array(unsigned long init_key[], int key_length);
 
 /* generates a random number on [0,0xffffffff]-interval */
+void ITCM_CODE genrand_regen();
 unsigned long ITCM_CODE genrand_int32(void);
 
 /* generates a random number on [0,0x7fffffff]-interval */
