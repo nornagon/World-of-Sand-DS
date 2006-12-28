@@ -63,7 +63,7 @@ typedef enum {
   NUM_MATERIALS
 } MATERIAL;
 
-bool LIQUID[] = {
+bool LIQUID[NUM_MATERIALS] = {
   false, // NOTHING
   false, // SAND
   true, // WATER
@@ -137,7 +137,7 @@ static inline void spawn(u8* buf) {
   addsome(OIL, buf, 204);
 }
 
-void majic(u8* buf, u32 x, u32 y) {
+static void majic(u8* buf, u32 x, u32 y) {
   u8* top = buf+(x-1)+(y-1)*256,
     * mid = buf+(x-1)+(y)*256,
     * bot = buf+(x-1)+(y+1)*256;
@@ -155,11 +155,11 @@ void majic(u8* buf, u32 x, u32 y) {
         if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = SAND; break; }
         if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = SAND; break; }
       } else
-      if (CHANCE(0.25) && bot[1] == WATER) {
+      if (CHANCE(0.25)) {
         // sink below water
-        mid[1] = WATER;
-        bot[1] = SAND;
-        break;
+        if (bot[1] == WATER) { bot[1] = SAND; mid[1] = WATER; break; }
+        if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
+        if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
       }
       break;
     case WATER:
@@ -185,6 +185,13 @@ void majic(u8* buf, u32 x, u32 y) {
         // sink below water
         bot[1] = SWATER;
         mid[1] = WATER;
+        break;
+      }
+      if (CHANCE(0.3)) {
+        if (bot[0] == WATER) { bot[0] = SWATER; mid[1] = WATER; break; }
+        if (bot[2] == WATER) { bot[2] = SWATER; mid[1] = WATER; break; }
+        if (mid[2] == WATER) { mid[2] = SWATER; mid[1] = WATER; break; }
+        if (mid[0] == WATER) { mid[0] = SWATER; mid[1] = WATER; break; }
       }
       break;
     case UNID:
@@ -257,10 +264,10 @@ void majic(u8* buf, u32 x, u32 y) {
           if (CHANCE(0.2)) { top[1] = SMOKE; } mid[1] = FIRE; break; }
       }
       if (CHANCE(0.1) &&
-          (top[1] == SALT || top[1] == SWATER ||
-           mid[0] == SALT || mid[0] == SWATER ||
-           mid[2] == SALT || mid[2] == SWATER ||
-           bot[1] == SALT || bot[1] == SWATER)) {
+          (top[1] == SWATER ||
+           mid[0] == SWATER ||
+           mid[2] == SWATER ||
+           bot[1] == SWATER)) {
         mid[1] = NOTHING; // salt kills
         break;
       }
@@ -290,14 +297,19 @@ void majic(u8* buf, u32 x, u32 y) {
       if (CHANCE(0.8)) {
         if (CHANCE(0.5)) {
           if (CHANCE(0.5)) {
-            if (bot[0] == NOTHING || LIQUID[bot[0]]) { mid[1] = bot[0]; bot[0] = ASH; break; }
-            if (bot[2] == NOTHING || LIQUID[bot[2]]) { mid[1] = bot[2]; bot[2] = ASH; break; }
+            if (bot[0] == NOTHING || LIQUID[bot[0]])
+              { mid[1] = bot[0]; bot[0] = ASH; break; }
+            if (bot[2] == NOTHING || LIQUID[bot[2]])
+              { mid[1] = bot[2]; bot[2] = ASH; break; }
           } else {
-            if (bot[2] == NOTHING || LIQUID[bot[2]]) { mid[1] = bot[2]; bot[2] = ASH; break; }
-            if (bot[0] == NOTHING || LIQUID[bot[0]]) { mid[1] = bot[0]; bot[0] = ASH; break; }
+            if (bot[2] == NOTHING || LIQUID[bot[2]])
+              { mid[1] = bot[2]; bot[2] = ASH; break; }
+            if (bot[0] == NOTHING || LIQUID[bot[0]])
+              { mid[1] = bot[0]; bot[0] = ASH; break; }
           }
         } else {
-          if (bot[1] == NOTHING || LIQUID[bot[1]]) { mid[1] = bot[1]; bot[1] = ASH; break; }
+          if (bot[1] == NOTHING || LIQUID[bot[1]])
+            { mid[1] = bot[1]; bot[1] = ASH; break; }
         }
       }
       break;
@@ -413,7 +425,7 @@ void majic(u8* buf, u32 x, u32 y) {
       break;
     case CONDEN:
       if (CHANCE(0.01) ||
-          (top[0] != WALL && top[0] != PLANT && top[0] != CERA)) {
+          (top[1] != WALL && top[1] != PLANT && top[1] != CERA)) {
         mid[1] = WATER; break; }
       break;
   }
@@ -499,7 +511,7 @@ SpriteRotation *const oam_back_rot = (SpriteRotation*)oam_back;
 int main(void) {
 //---------------------------------------------------------------------------------
 	touchPosition touch;
-  u8* buf = (u8*) malloc(256*192);
+  u8 *buf = malloc(256*192);
   memset(buf, 0, 256*192);
 
   irqInit();
@@ -622,9 +634,12 @@ int main(void) {
         pressed = keysDown();
 
     if (touched_last) {
-      bresenThick(buf, lastx, lasty, touch.px, touch.py, brushes[selected], thicknesses[thickness] << 16);
-      bresenCircle(buf, lastx, lasty, thicknesses[thickness] >> 1, brushes[selected]);
-      bresenCircle(buf, touch.px, touch.py, thicknesses[thickness] >> 1, brushes[selected]);
+      bresenThick(buf, lastx, lasty, touch.px, touch.py,
+          brushes[selected], thicknesses[thickness] << 16);
+      bresenCircle(buf, lastx, lasty,
+          thicknesses[thickness] >> 1, brushes[selected]);
+      bresenCircle(buf, touch.px, touch.py,
+          thicknesses[thickness] >> 1, brushes[selected]);
     }
 
     // ERASER WALL SAND
@@ -685,7 +700,7 @@ int main(void) {
 
     spawn(buf);
     calculate(buf);
-    memcpy16(BG_GFX, buf, 256*192);
+    memcpy32(BG_GFX, buf, (256*192)>>2);
 
     selectorangle += 10;
     selectorangle &= 0x1ff;

@@ -57,7 +57,7 @@ static unsigned long mt[N]; /* the array for the state vector  */
 static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
 
 /* initializes mt[N] with a seed */
-void init_genrand(unsigned long s)
+void ITCM_CODE init_genrand(unsigned long s)
 {
     mt[0]= s & 0xffffffffUL;
     for (mti=1; mti<N; mti++) {
@@ -76,6 +76,7 @@ void init_genrand(unsigned long s)
 /* init_key is the array for initializing keys */
 /* key_length is its length */
 /* slight change for C++, 2004/2/26 */
+#if 0
 void init_by_array(unsigned long init_key[], int key_length)
 {
     int i, j, k;
@@ -100,9 +101,10 @@ void init_by_array(unsigned long init_key[], int key_length)
 
     mt[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */ 
 }
+#endif
 
 /* generates a random number on [0,0xffffffff]-interval */
-unsigned long genrand_int32(void)
+unsigned long ITCM_CODE genrand_int32(void)
 {
     unsigned long y;
     static unsigned long mag01[2]={0x0UL, MATRIX_A};
@@ -139,6 +141,7 @@ unsigned long genrand_int32(void)
     return y;
 }
 
+#if 0
 /* generates a random number on [0,0x7fffffff]-interval */
 long genrand_int31(void)
 {
@@ -172,4 +175,5 @@ double genrand_res53(void)
     unsigned long a=genrand_int32()>>5, b=genrand_int32()>>6; 
     return(a*67108864.0+b)*(1.0/9007199254740992.0); 
 } 
+#endif
 /* These real versions are due to Isaku Wada, 2002/01/09 added */
