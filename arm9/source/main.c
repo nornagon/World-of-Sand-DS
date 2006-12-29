@@ -39,7 +39,20 @@
 #include "map_bin.h"
 
 #include "majic.h"
+#include "comms.h"
 
+volatile bool have_data_from_arm7 = false;
+volatile u32 data_from_arm7_len = 0;
+
+void arm7_data_handler() {
+  u32 msg = REG_IPC_FIFO_RX;
+  if ((msg & ~0xffff) == COMMS_DATA_AVAILABLE) {
+    u32 len = msg & 0xffff;
+    WRAM_CR = 0; // 32K to ARM9
+    have_data_from_arm7 = true;
+    data_from_arm7_len = len;
+  }
+}
 
 #define CHANCE(n) (genrand_int32() < ((u32)((n)*0xffffffff)))
 
@@ -96,22 +109,44 @@ static inline void spawn(u8* buf) {
 }
 
 u32 calculate(u8* buf) {
-  static int counter = 0;
+  static int counter = 0, arm7lines = 0;
   u32 x,y;
   u32 particount = 0;
   genrand_regen();
 
+  put_data(buf, 60*256);
+
   if (counter)
-    for (y = 191; y > 0; y--) // ^
+    for (y = 191; y > 60; y--) // ^
       for (x = 1; x < 255; x++) // ->
         particount += majic(buf,x,y);
   else
-    for (y = 191; y > 0; y--) // ^
-      for (x = 255; x > 0; x--) // <-
+    for (y = 191; y > 60; y--) // ^
+      for (x = 255; x > 1; x--) // <-
         particount += majic(buf,x,y);
+
+  // get data back from the arm7
+  while (!have_data_from_arm7);
+  particount += data_from_arm7_len;
+  iprintf("\x1b[0;0H%04x", data_from_arm7_len);
+  have_data_from_arm7 = false;
+  memcpy(buf, WRAM, 60*256);
+
+  if (counter) {
+    for (x = 1; x < 255; x++)
+      particount += majic(buf, x, 130);
+    for (x = 1; x < 255; x++)
+      particount += majic(buf, x, 129);
+  } else {
+    for (x = 255; x > 1; x--)
+      particount += majic(buf, x, 130);
+    for (x = 255; x > 1; x--)
+      particount += majic(buf, x, 129);
+  }
+
   // drop a black rectangle over it all
   memset32(buf, NOTHING, 64);
-  memset32(buf+192*256, NOTHING, 64);
+  memset32(buf+191*256, NOTHING, 64);
   for (y = 1; y < 192; y++)
     buf[y*256] = buf[y*256+255] = NOTHING;
   
@@ -180,8 +215,11 @@ int main(void) {
   memset(buf, 0, 256*192);
 
   irqInit();
-  irqEnable(IRQ_VBLANK);
   irqSet(IRQ_VBLANK, vblank_counter);
+  REG_IPC_FIFO_CR = IPC_FIFO_ENABLE | IPC_FIFO_SEND_CLEAR;
+  irqSet(IRQ_FIFO_NOT_EMPTY, arm7_data_handler);
+  irqEnable(IRQ_VBLANK | IRQ_FIFO_NOT_EMPTY);
+  REG_IPC_FIFO_CR = IPC_FIFO_ENABLE | IPC_FIFO_RECV_IRQ;
 
   /********
    * GBFS *
@@ -296,7 +334,7 @@ int main(void) {
   int touched_last = 0;
   s16 lastx=0,lasty=0;
   swiWaitForVBlank(); // wait for things to settle down (hopefully)
-  init_genrand(IPC->rtc_seconds + IPC->rtc_minutes * 64 + IPC->rtc_hours * 4096);
+  init_genrand(*((u32*)IPC->curtime));
 	while (1) {
     if (particount < 700)
       swiWaitForVBlank();
@@ -320,10 +358,6 @@ int main(void) {
       bresenCircle(buf, touch.px, touch.py,
           thicknesses[thickness] >> 1, brushes[selected]);
     }
-
-    // ERASER WALL SAND
-    // WATER  TREE SALT
-    // OIL    FIRE WAX  ???
 
     if (pressed & KEY_LEFT) {
       if (selected % 4 != 0) {

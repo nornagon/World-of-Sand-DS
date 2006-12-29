@@ -53,8 +53,12 @@
 #define UPPER_MASK 0x80000000UL /* most significant w-r bits */
 #define LOWER_MASK 0x7fffffffUL /* least significant r bits */
 
-static unsigned long __attribute__((section (".dtcm"))) mt[N]; /* the array for the state vector  */
-static int __attribute__((section (".dtcm"))) mti=N+1; /* mti==N+1 means mt[N] is not initialized */
+//#ifdef ARM7
+//#define DTCM_DATA
+//#endif
+
+static unsigned long DTCM_DATA mt[N]; /* the array for the state vector  */
+static int DTCM_DATA mti=N+1; /* mti==N+1 means mt[N] is not initialized */
 
 /* initializes mt[N] with a seed */
 void ITCM_CODE init_genrand(unsigned long s)

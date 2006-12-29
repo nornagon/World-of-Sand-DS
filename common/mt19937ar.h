@@ -45,6 +45,10 @@
 
 #include <nds/jtypes.h>
 
+#ifdef ARM7
+#define ITCM_CODE
+#endif
+
 /* initializes mt[N] with a seed */
 void ITCM_CODE init_genrand(unsigned long s);
 

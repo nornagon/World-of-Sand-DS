@@ -1,5 +1,7 @@
 #include <nds.h>
 #include <stdlib.h>
+#include "comms.h"
+#include "majic.h"
 
 //---------------------------------------------------------------------------------
 void startSound(int sampleRate, const void* data, u32 bytes, u8 channel, u8 vol,  u8 pan, u8 format) {
@@ -118,9 +120,39 @@ void VcountHandler(void) {
 }
 
 
-//---------------------------------------------------------------------------------
+u32 calculate() {
+  static int counter = 0;
+  u32 x,y;
+  u32 particount = 0;
+  genrand_regen();
+
+  if (counter)
+    for (y = (191-130); y > 0; y--)
+      for (x = 1; x < 255; x++)
+        particount += majic(WRAM, x, y);
+  else
+    for (y = (191-130); y > 0; y--)
+      for (x = 255; x > 1; x--)
+        particount += majic(WRAM, x, y);
+  counter = !counter;
+  return particount;
+}
+
+
+void FifoHandler() {
+  u32 msg = REG_IPC_FIFO_RX;
+
+  if ((msg & ~0xffff) == COMMS_DATA_AVAILABLE) {
+    REG_IME = IME_ENABLE; // let vcount handlers interrupt calculate()
+    u32 particount = calculate();
+    REG_IPC_FIFO_TX = COMMS_DATA_AVAILABLE | (particount & 0xffff);
+  }
+}
+
+//------------------------------------------------------------------------------
 int main(int argc, char ** argv) {
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+  REG_IPC_FIFO_CR = IPC_FIFO_ENABLE | IPC_FIFO_SEND_CLEAR;
 	// Reset the clock if needed
 	rtcReset();
 
@@ -134,12 +166,16 @@ int main(int argc, char ** argv) {
   SetYtrigger(80);
   vcount = 80;
   irqSet(IRQ_VCOUNT, VcountHandler);
-	irqEnable(IRQ_VBLANK | IRQ_VCOUNT);
+  irqSet(IRQ_FIFO_NOT_EMPTY, FifoHandler);
+	irqEnable(IRQ_VBLANK | IRQ_VCOUNT | IRQ_FIFO_NOT_EMPTY);
+  REG_IPC_FIFO_CR = IPC_FIFO_ENABLE | IPC_FIFO_RECV_IRQ;
 
-    while(1) 
-    {
-        swiWaitForVBlank();
-    }
+	uint8 ct[sizeof(IPC->curtime)];
+	rtcGetTime((uint8 *)ct);
+	BCDToInteger((uint8 *)&(ct[1]), 7);
+  init_genrand(*((u32*)ct));
+
+  while (1) swiWaitForVBlank();
 }
 
 

@@ -27,6 +27,10 @@ typedef enum {
   NUM_MATERIALS
 } MATERIAL;
 
+//#ifdef ARM7
+//#define ITCM_CODE
+//#endif
+
 u32 ITCM_CODE majic(u8* buf, u32 x, u32 y);
 
 #endif // MAJIC_H
