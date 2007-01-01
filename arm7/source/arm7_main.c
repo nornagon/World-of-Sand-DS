@@ -120,19 +120,19 @@ void VcountHandler(void) {
 }
 
 
-u32 calculate() {
+u32 calculate(u16 arm7lines) {
   static int counter = 0;
   u32 x,y;
   u32 particount = 0;
   genrand_regen();
 
   if (counter)
-    for (y = (191-130); y > 0; y--)
+    for (y = arm7lines; y > 0; y--)
       for (x = 1; x < 255; x++)
         particount += majic(WRAM, x, y);
   else
-    for (y = (191-130); y > 0; y--)
-      for (x = 255; x > 1; x--)
+    for (y = arm7lines; y > 0; y--)
+      for (x = 254; x > 0; x--)
         particount += majic(WRAM, x, y);
   counter = !counter;
   return particount;
@@ -144,7 +144,7 @@ void FifoHandler() {
 
   if ((msg & ~0xffff) == COMMS_DATA_AVAILABLE) {
     REG_IME = IME_ENABLE; // let vcount handlers interrupt calculate()
-    u32 particount = calculate();
+    u32 particount = calculate((msg & 0xffff)/256);
     REG_IPC_FIFO_TX = COMMS_DATA_AVAILABLE | (particount & 0xffff);
   }
 }

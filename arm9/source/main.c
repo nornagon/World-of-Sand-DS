@@ -41,7 +41,9 @@
 #include "majic.h"
 #include "comms.h"
 
-volatile bool have_data_from_arm7 = false;
+#define REPEAT_U8_TO_U32(n) ((n) | ((n)<<8) | ((n)<<16) | ((n)<<24))
+
+volatile bool have_data_from_arm7 = true;
 volatile u32 data_from_arm7_len = 0;
 
 void arm7_data_handler() {
@@ -108,45 +110,72 @@ static inline void spawn(u8* buf) {
   addsome(OIL, buf, 204);
 }
 
-u32 calculate(u8* buf) {
+u32 calculate(u8* buf, u8* inbuf) {
   static int counter = 0, arm7lines = 0;
   u32 x,y;
   u32 particount = 0;
   genrand_regen();
 
-  put_data(buf, 60*256);
+  // 0. read data from arm7 (frame n)
+  // 1. run stitching line (frame n+1)
+  // 2. apply input to lower portion (frame n+1)
+  // 3. send lower portion to arm7 (frame n+1)
+  // 4. calculate continuing from previous arm7 data (frame n)
+  // 5. render (frame n)
+  // 6. apply input to top portion (frame n+1)
+  // 7. n++; goto 1
 
-  if (counter)
-    for (y = 191; y > 60; y--) // ^
-      for (x = 1; x < 255; x++) // ->
-        particount += majic(buf,x,y);
-  else
-    for (y = 191; y > 60; y--) // ^
-      for (x = 255; x > 1; x--) // <-
-        particount += majic(buf,x,y);
-
-  // get data back from the arm7
+  // read data from arm7, we'll continue from it
   while (!have_data_from_arm7);
+  memcpy(buf+130*256, WRAM, (191-130)*256);
   particount += data_from_arm7_len;
   iprintf("\x1b[0;0H%04x", data_from_arm7_len);
   have_data_from_arm7 = false;
-  memcpy(buf, WRAM, 60*256);
 
-  if (counter) {
+  // run a stitching line
+  if (counter) { // left to right
     for (x = 1; x < 255; x++)
-      particount += majic(buf, x, 130);
+      majic(buf, x, 130);
     for (x = 1; x < 255; x++)
-      particount += majic(buf, x, 129);
+      majic(buf, x, 129);
   } else {
     for (x = 255; x > 1; x--)
-      particount += majic(buf, x, 130);
+      majic(buf, x, 130);
     for (x = 255; x > 1; x--)
-      particount += majic(buf, x, 129);
+      majic(buf, x, 129);
   }
 
+  // apply input to arm7 part of buffer (input is for frame n+1)
+  for (y = 130; y < 191; y++)
+    for (x = 1; x < 255; x++)
+      if (inbuf[y*256+x] != NUM_MATERIALS)
+        buf[y*256+x] = inbuf[y*256+x];
+  memset32(inbuf+130*256, REPEAT_U8_TO_U32(NUM_MATERIALS), ((191-130)*256)>>2);
+
+  // copy data back to arm7.
+  put_data(buf+130*256, (192-130)*256);
+
+  // continue from where the arm7 left off
+  if (counter)
+    for (y = 129; y > 0; y--) // ^
+      for (x = 1; x < 255; x++) // ->
+        particount += majic(buf,x,y);
+  else
+    for (y = 129; y > 0; y--) // ^
+      for (x = 255; x > 0; x--) // <-
+        particount += majic(buf,x,y);
+  // next time calculate() is called, the arm7 should have more data for us
+
+  // apply input to arm9 part of the data (for consideration in frame n+1)
+  for (y = 1; y < 130; y++)
+    for (x = 1; x < 255; x++)
+      if (inbuf[y*256+x] != NUM_MATERIALS)
+        buf[y*256+x] = inbuf[y*256+x];
+  memset32(inbuf, REPEAT_U8_TO_U32(NUM_MATERIALS), (130*256)>>2);
+
   // drop a black rectangle over it all
-  memset32(buf, NOTHING, 64);
-  memset32(buf+191*256, NOTHING, 64);
+  memset32(buf, NOTHING, 256>>2);
+  memset32(buf+191*256, NOTHING, 256>>2);
   for (y = 1; y < 192; y++)
     buf[y*256] = buf[y*256+255] = NOTHING;
   
@@ -207,12 +236,17 @@ void vblank_counter() {
   vblnks += 1;
 }
 
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 int main(void) {
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 	touchPosition touch;
-  u8 *buf = malloc(256*192);
-  memset(buf, 0, 256*192);
+  u8 *buf = malloc(256*192), *inputbuf = malloc(256*192);
+  memset32(buf, REPEAT_U8_TO_U32(NOTHING), (256*192)>>2);
+  memset32(inputbuf, REPEAT_U8_TO_U32(NUM_MATERIALS), (256*192)>>2);
+
+  /********
+   * IRQs *
+   ********/
 
   irqInit();
   irqSet(IRQ_VBLANK, vblank_counter);
@@ -351,11 +385,11 @@ int main(void) {
         pressed = keysDown();
 
     if (touched_last) {
-      bresenThick(buf, lastx, lasty, touch.px, touch.py,
+      bresenThick(inputbuf, lastx, lasty, touch.px, touch.py,
           brushes[selected], thicknesses[thickness] << 16);
-      bresenCircle(buf, lastx, lasty,
+      bresenCircle(inputbuf, lastx, lasty,
           thicknesses[thickness] >> 1, brushes[selected]);
-      bresenCircle(buf, touch.px, touch.py,
+      bresenCircle(inputbuf, touch.px, touch.py,
           thicknesses[thickness] >> 1, brushes[selected]);
     }
 
@@ -412,7 +446,7 @@ int main(void) {
     }
 
     spawn(buf);
-    particount = calculate(buf);
+    particount = calculate(buf, inputbuf);
     memcpy32(BG_GFX, buf, (256*192)>>2);
 
     selectorangle += 10;
