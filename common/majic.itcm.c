@@ -139,9 +139,10 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         mid[0] != CERA &&
         mid[2] != CERA &&
         bot[1] != CERA)
-        mid[1] = NOTHING;
+      { mid[1] = NOTHING; break; }
       if (CHANCE(0.9)) {
         // water + fire = steam
+        if (top[1] == WATER) { top[1] = STEAM; mid[1] = NOTHING; break; }
         if (mid[2] == WATER) { mid[2] = STEAM; mid[1] = NOTHING; break; }
         if (mid[0] == WATER) { mid[0] = STEAM; mid[1] = NOTHING; break; }
         if (bot[0] == WATER) { bot[0] = STEAM; mid[1] = NOTHING; break; }
