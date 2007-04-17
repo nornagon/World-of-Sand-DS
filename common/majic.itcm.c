@@ -190,7 +190,12 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         if (top[1] == WATER) { top[1] = STEAM; mid[1] = NOTHING; break; }
         if (mid[2] == WATER) { mid[2] = STEAM; mid[1] = NOTHING; break; }
         if (mid[0] == WATER) { mid[0] = STEAM; mid[1] = NOTHING; break; }
-        if (bot[0] == WATER) { bot[0] = STEAM; mid[1] = NOTHING; break; }
+        if (bot[1] == WATER) { bot[1] = STEAM; mid[1] = NOTHING; break; }
+        // salt water + fire = steam + salt
+        if (top[1] == SWATER) { top[1] = STEAM; mid[1] = SALT; break; }
+        if (mid[2] == SWATER) { mid[2] = STEAM; mid[1] = SALT; break; }
+        if (mid[0] == SWATER) { mid[0] = STEAM; mid[1] = SALT; break; }
+        if (bot[1] == SWATER) { bot[1] = STEAM; mid[1] = SALT; break; }
       }
       break;
     case PLANT:
