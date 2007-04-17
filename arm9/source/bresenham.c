@@ -97,14 +97,22 @@ void bresenThick(u8* buf, int x1, int y1, int x2, int y2, u8 val, int width) {
 
 
 void bresenCircle(u8* buf, s32 cx, s32 cy, s32 r, u8 val) {
-  s32 x = r, y = 1;
+  s32 x = r, y = 1, tx1 = 0, tx2 = 0, ty = 0;
   s32 xchg = 1 - 2*r, ychg = 3;
   s32 raderr = 1;
   while (x >= y) {
-    memset(buf+(cx-x)+256*(cy+y-1), val, 2*x);
-    memset(buf+(cx-x)+256*(cy-y), val, 2*x);
-    memset(buf+(cx-y)+256*(cy+x-1), val, 2*y);
-    memset(buf+(cx-y)+256*(cy-x), val, 2*y);
+    tx1 = cx-x;
+    tx2 = cx-y;
+    if (tx1 < 0) tx1 = 0;
+    if (tx2 > 255) tx2 = 255;
+    if ((ty = cy+y-1) > 0)
+      memset(buf+tx1+256*ty, val, 2*x);
+    if ((ty = cy-y) > 0)
+      memset(buf+tx1+256*ty, val, 2*x);
+    if ((ty = cy+x-1) > 0)
+      memset(buf+tx2+256*ty, val, 2*y);
+    if ((ty = cy-x) > 0)
+      memset(buf+tx2+256*ty, val, 2*y);
     y++;
     raderr += ychg;
     ychg += 2;

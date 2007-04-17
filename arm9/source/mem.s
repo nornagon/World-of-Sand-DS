@@ -10,7 +10,7 @@ memset32:
   movs  r2, r2, lsr #3
   beq  .Lres_set32
   stmfd sp!, {r4-r10}
-  mov   r3, r1
+  mov   r3, r1 @ r3 = r1
   mov   r4, r1
   mov   r5, r1
   mov   r6, r1

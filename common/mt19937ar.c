@@ -71,7 +71,7 @@ void ITCM_CODE init_genrand(unsigned long s)
         /* In the previous versions, MSBs of the seed affect   */
         /* only MSBs of the array mt[].                        */
         /* 2002/01/09 modified by Makoto Matsumoto             */
-        mt[mti] &= 0xffffffffUL;
+        //mt[mti] &= 0xffffffffUL;
         /* for >32 bit machines */
     }
 }

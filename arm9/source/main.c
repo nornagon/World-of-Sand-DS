@@ -129,7 +129,7 @@ u32 calculate(u8* buf, u8* inbuf) {
   while (!have_data_from_arm7);
   memcpy(buf+130*256, WRAM, (191-130)*256);
   particount += data_from_arm7_len;
-  iprintf("\x1b[0;0H%04x", data_from_arm7_len);
+  //iprintf("\x1b[0;0H%04x", data_from_arm7_len);
   have_data_from_arm7 = false;
 
   // run a stitching line
@@ -157,11 +157,11 @@ u32 calculate(u8* buf, u8* inbuf) {
 
   // continue from where the arm7 left off
   if (counter)
-    for (y = 129; y > 0; y--) // ^
+    for (y = 128; y > 0; y--) // ^
       for (x = 1; x < 255; x++) // ->
         particount += majic(buf,x,y);
   else
-    for (y = 129; y > 0; y--) // ^
+    for (y = 128; y > 0; y--) // ^
       for (x = 255; x > 0; x--) // <-
         particount += majic(buf,x,y);
   // next time calculate() is called, the arm7 should have more data for us
@@ -243,6 +243,8 @@ int main(void) {
   u8 *buf = malloc(256*192), *inputbuf = malloc(256*192);
   memset32(buf, REPEAT_U8_TO_U32(NOTHING), (256*192)>>2);
   memset32(inputbuf, REPEAT_U8_TO_U32(NUM_MATERIALS), (256*192)>>2);
+  WRAM_CR = 0; // 32K to ARM9
+  memset32(WRAM, REPEAT_U8_TO_U32(NOTHING), (32*1024)>>2);
 
   /********
    * IRQs *
@@ -332,7 +334,7 @@ int main(void) {
   selector[0].attribute[0] = ATTR0_ROTSCALE_DOUBLE | ATTR0_COLOR_256;
   selector[0].attribute[1] = ATTR1_ROTDATA(0) | ATTR1_SIZE_16;
   selector[0].attribute[2] = 0 | ATTR2_PRIORITY(0);
-  moveSprite(&selector[0], 24, 112);
+  moveSprite(&selector[0], 24, 256-21*8);
   selector[1].attribute[0] = ATTR0_COLOR_256;
   selector[1].attribute[1] = ATTR1_SIZE_8;
   selector[1].attribute[2] = 8;
@@ -396,28 +398,28 @@ int main(void) {
     if (pressed & KEY_LEFT) {
       if (selected % 4 != 0) {
         selected -= 1;
-        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, (256-21*8)+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_RIGHT) {
       if (selected % 4 != 3) {
         selected += 1;
-        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, (256-21*8)+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_UP) {
       if (selected > 3) {
         selected -= 4;
-        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, (256-21*8)+(selected/4)*24);
       }
     }
 
     if (pressed & KEY_DOWN) {
-      if (selected < 8) {
+      if (selected < sizeof(brushes)/sizeof(u8)-4) {
         selected += 4;
-        moveSprite(&selector[0], (selected % 4)*24, 112+(selected/4)*24);
+        moveSprite(&selector[0], (selected % 4)*24, (256-21*8)+(selected/4)*24);
       }
     }
 

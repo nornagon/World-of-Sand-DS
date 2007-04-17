@@ -134,6 +134,11 @@ u32 calculate(u16 arm7lines) {
     for (y = arm7lines; y > 0; y--)
       for (x = 254; x > 0; x--)
         particount += majic(WRAM, x, y);
+  // clear edges
+  for (y = 0; y < arm7lines; y++) {
+    WRAM[y*256+0] = NOTHING;
+    WRAM[y*256+255] = NOTHING;
+  }
   counter = !counter;
   return particount;
 }
