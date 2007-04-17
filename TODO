@@ -1,7 +1,7 @@
-* optimisation
 * title screen
-* more materials (acid, mud, torch, liquid fire, oxygen (invisible, rises, explodes), oil maker, sand maker, sticky goo)
-* vertical version
+* more materials (mud, torch, oxygen (invisible, rises, explodes), oil well, sand bucket, sticky goo, glue)
+  - make liquid fire burn when falling better?
+* portrait version
 * hideable button tray?
 * stoppable sources
-* time counter/particle count on the top screen
+* cleanup of top screen

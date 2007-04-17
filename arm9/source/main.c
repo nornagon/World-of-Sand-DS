@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
 	$Id: template.c,v 1.4 2005/09/17 23:15:13 wntrmute Exp $
 
 	Basic Hello World
@@ -18,7 +18,7 @@
 	added templates
 
 
----------------------------------------------------------------------------------*/
+------------------------------------------------------------------------------*/
 #include <nds.h>
 #include <nds/arm9/console.h> //basic print funcionality
 #include <nds/arm9/trig_lut.h>
@@ -37,6 +37,7 @@
 #include "selector_bin.h"
 #include "selector_pal_bin.h"
 #include "map_bin.h"
+#include "font_bin.h"
 
 #include "majic.h"
 #include "comms.h"
@@ -299,8 +300,13 @@ int main(void) {
   BG_PALETTE[SWATER] = RGB15(8,16,31);
   BG_PALETTE[SALT] = RGB15(31,31,31);
   BG_PALETTE[SNOW] = RGB15(28,28,28);
-  BG_PALETTE[STEAM] = RGB15(17,17,17);
-  BG_PALETTE[CONDEN] = RGB15(20,20,20);
+  BG_PALETTE[STEAM] = RGB15(17,17,20);
+  BG_PALETTE[CONDEN] = RGB15(20,20,23);
+  BG_PALETTE[ACID] = RGB15(12,31,19);
+  BG_PALETTE[LIQFIRE] = RGB15(31,27,14);
+  BG_PALETTE[CONCRETE] = RGB15(18,18,18);
+  BG_PALETTE[ANTIMATTER] = RGB15(1,4,1);
+  BG_PALETTE[ANTIMATTER2] = RGB15(31,9,9);
 
   // --**ooOO- Sub BG -OOoo**--
 
@@ -349,19 +355,22 @@ int main(void) {
 
   // --**ooOO- Font -OOoo**--
 
-  SUB_BG1_CR = BG_TILE_BASE(1) | BG_MAP_BASE(29) | BG_PRIORITY(0) | BG_16_COLOR;
+  SUB_BG1_CR = BG_TILE_BASE(1) | BG_MAP_BASE(29) | BG_PRIORITY(0) | BG_256_COLOR;
   BG_PALETTE_SUB[255] = RGB15(31,31,31);
 
-  consoleInitDefault((u16*)SCREEN_BASE_BLOCK_SUB(29), (u16*)CHAR_BASE_BLOCK_SUB(1), 16);
+  consoleInit((u16*)font_bin, (u16*)CHAR_BASE_BLOCK_SUB(1), 95, 32, (u16*)SCREEN_BASE_BLOCK_SUB(29), CONSOLE_USE_COLOR255, 8);
+
+  memcpy16((u16*)CHAR_BASE_BLOCK_SUB(1), font_bin, font_bin_size>>1);
 
   /*************
    * Main Loop *
    *************/
 
   u8 selected = 1;
-  u8 brushes[] = {NOTHING, WALL,  SAND, SNOW,
-                  WATER,   PLANT, SALT, SPOUT,
-                  OIL,     FIRE,  CERA, UNID};
+  u8 brushes[] = {NOTHING, WALL,     SAND, SNOW,
+                  WATER,   PLANT,    SALT, SPOUT,
+                  OIL,     FIRE,     CERA, UNID,
+                  LIQFIRE, CONCRETE, ACID, ANTIMATTER,};
   u8 thickness = 0;
   u32 thicknesses[] = {2,4,6,8};
 

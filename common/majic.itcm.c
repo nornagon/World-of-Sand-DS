@@ -23,8 +23,73 @@ bool LIQUID[NUM_MATERIALS] = {
   false, // SNOW
   false, // STEAM
   false, // CONDEN
+  true, // ACID
+  true, // LIQFIRE
+  true, // CONCRETE
+  false, // ANTIMATTER
+  false, // ANTIMATTER2
 };
 
+bool SOLID[NUM_MATERIALS] = {
+  false, // NOTHING
+  false, // SAND
+  false, // WATER
+  false, // FIRE
+  true, // WALL
+  true, // PLANT
+  false, // SMOKE
+  false, // ASH
+  true, // SPOUT
+  true, // CERA
+  false, // CERA2
+  false, // UNID
+  false, // UNIDT
+  false, // OIL
+  false, // SWATER
+  false, // SALT
+  false, // SNOW
+  false, // STEAM
+  false, // CONDEN
+  false, // ACID
+  false, // LIQFIRE
+  false, // CONCRETE
+  false, // ANTIMATTER
+  false, // ANTIMATTER2
+};
+
+bool ACIDBURNT[NUM_MATERIALS] = {
+  false, // NOTHING
+  true, // SAND
+  false, // WATER
+  false, // FIRE
+  true, // WALL
+  true, // PLANT
+  false, // SMOKE
+  true, // ASH
+  true, // SPOUT
+  false, // CERA
+  false, // CERA2
+  false, // UNID
+  false, // UNIDT
+  false, // OIL
+  true, // SWATER
+  false, // SALT
+  true, // SNOW
+  false, // STEAM
+  false, // CONDEN
+  false, // ACID
+  false, // LIQFIRE
+  true, // CONCRETE
+  false, // ANTIMATTER
+  false, // ANTIMATTER2
+};
+
+#define FALL(mat) \
+  if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = mat; break; } \
+  if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = mat; break; } \
+  if (bot[2] == NOTHING) { mid[1] = NOTHING; bot[2] = mat; break; } \
+  if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = mat; break; } \
+  if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = mat; break; }
 
 u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   u8* top = buf+(x-1)+(y-1)*256,
@@ -36,14 +101,8 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   // px = mid[1]
   switch(mid[1]) {
     case SAND:
-      if (CHANCE(0.95)) {
-        // gravity
-        if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = SAND; break; }
-        if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = SAND; break; }
-        if (bot[2] == NOTHING) { mid[1] = NOTHING; bot[2] = SAND; break; }
-        if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = SAND; break; }
-        if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = SAND; break; }
-      } else if (CHANCE(0.25)) {
+      if (CHANCE(0.95)) { FALL(SAND); }
+      else if (CHANCE(0.25)) {
         // sink below water
         if (bot[1] == WATER) { bot[1] = SAND; mid[1] = WATER; break; }
         if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
@@ -51,24 +110,10 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       }
       break;
     case WATER:
-      if (CHANCE(0.95)) {
-        // gravity
-        if (bot[1] == NOTHING) { bot[1] = WATER; mid[1] = NOTHING; break; }
-        if (bot[0] == NOTHING) { bot[0] = WATER; mid[1] = NOTHING; break; }
-        if (bot[2] == NOTHING) { bot[2] = WATER; mid[1] = NOTHING; break; }
-        if (mid[2] == NOTHING) { mid[2] = WATER; mid[1] = NOTHING; break; }
-        if (mid[0] == NOTHING) { mid[0] = WATER; mid[1] = NOTHING; break; }
-      }
+      if (CHANCE(0.95)) { FALL(WATER); }
       break;
     case SWATER:
-      if (CHANCE(0.95)) {
-        // gravity
-        if (bot[1] == NOTHING) { bot[1] = SWATER; mid[1] = NOTHING; break; }
-        if (bot[0] == NOTHING) { bot[0] = SWATER; mid[1] = NOTHING; break; }
-        if (bot[2] == NOTHING) { bot[2] = SWATER; mid[1] = NOTHING; break; }
-        if (mid[2] == NOTHING) { mid[2] = SWATER; mid[1] = NOTHING; break; }
-        if (mid[0] == NOTHING) { mid[0] = SWATER; mid[1] = NOTHING; break; }
-      }
+      if (CHANCE(0.95)) { FALL(SWATER); }
       if (bot[1] == WATER && CHANCE(0.5)) {
         // sink below water
         bot[1] = SWATER;
@@ -234,33 +279,20 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
           mid[0] = mid[1] = mid[2] = top[1] = bot[1] = FIRE; // boom! :)
           break;
         }
+      if (CHANCE(0.95)) { FALL(OIL); }
       if (CHANCE(0.95)) {
-        // gravity
-             if (bot[1] == NOTHING) { bot[1] = OIL; mid[1] = NOTHING; break; }
-        else if (bot[0] == NOTHING) { bot[0] = OIL; mid[1] = NOTHING; break; }
-        else if (bot[2] == NOTHING) { bot[2] = OIL; mid[1] = NOTHING; break; }
-        else if (mid[2] == NOTHING) { mid[2] = OIL; mid[1] = NOTHING; break; }
-        else if (mid[0] == NOTHING) { mid[0] = OIL; mid[1] = NOTHING; break; }
-      }
-      if (CHANCE(0.95)) {
-             if (top[1] == WATER) { top[1] = OIL; mid[1] = WATER; break; }
-        else if (top[0] == WATER) { top[0] = OIL; mid[1] = WATER; break; }
-        else if (top[2] == WATER) { top[2] = OIL; mid[1] = WATER; break; }
+        // rise above water
+        if (top[1] == WATER) { top[1] = OIL; mid[1] = WATER; break; }
+        if (top[0] == WATER) { top[0] = OIL; mid[1] = WATER; break; }
+        if (top[2] == WATER) { top[2] = OIL; mid[1] = WATER; break; }
       }
       if (CHANCE(0.3)) {
-             if (mid[2] == WATER) { mid[2] = OIL; mid[1] = WATER; break; }
-        else if (mid[0] == WATER) { mid[0] = OIL; mid[1] = WATER; break; }
+        if (mid[2] == WATER) { mid[2] = OIL; mid[1] = WATER; break; }
+        if (mid[0] == WATER) { mid[0] = OIL; mid[1] = WATER; break; }
       }
       break;
     case SALT:
-      if (CHANCE(0.95)) {
-        // gravity
-             if (bot[1] == NOTHING) { bot[1] = SALT; mid[1] = NOTHING; break; }
-        else if (bot[0] == NOTHING) { bot[0] = SALT; mid[1] = NOTHING; break; }
-        else if (bot[2] == NOTHING) { bot[2] = SALT; mid[1] = NOTHING; break; }
-        else if (mid[2] == NOTHING) { mid[2] = SALT; mid[1] = NOTHING; break; }
-        else if (mid[0] == NOTHING) { mid[0] = SALT; mid[1] = NOTHING; break; }
-      }
+      if (CHANCE(0.95)) { FALL(SALT); }
       if (CHANCE(0.9)) {
              if (bot[1] == WATER) bot[1] = SWATER;
         else if (top[1] == WATER) top[1] = SWATER;
@@ -328,6 +360,56 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       if (CHANCE(0.01) ||
           (top[1] != WALL && top[1] != PLANT && top[1] != CERA)) {
         mid[1] = WATER; break; }
+      break;
+    case ACID:
+      if (CHANCE(0.95)) { FALL(ACID); }
+      if (CHANCE(0.5)) {
+        register u32 dir = CHANCE(0.5) ? 0 : 2;
+        register u32 otherdir = dir ? 0 : 2;
+        if (ACIDBURNT[bot[1]]) {
+          mid[1] = NOTHING; bot[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        if (ACIDBURNT[bot[dir]]) {
+          mid[1] = NOTHING; bot[dir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        if (ACIDBURNT[bot[otherdir]]) {
+          mid[1] = NOTHING; bot[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        if (ACIDBURNT[mid[dir]]) {
+          mid[1] = NOTHING; mid[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        if (ACIDBURNT[mid[otherdir]]) {
+          mid[1] = NOTHING; mid[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        if (CHANCE(0.1)) {
+          if (ACIDBURNT[top[1]]) {
+            top[1] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          if (ACIDBURNT[top[dir]]) {
+            top[dir] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          if (ACIDBURNT[top[otherdir]]) {
+            top[otherdir] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+        }
+      }
+      break;
+    case LIQFIRE:
+      if (CHANCE(0.95)) { FALL(LIQFIRE); }
+      if (CHANCE(0.7) && top[1] == NOTHING) top[1] = FIRE; break;
+      if (CHANCE(0.1)) mid[1] = NOTHING; break; // fizzle out
+      break;
+    case ANTIMATTER: {
+      u32 dir = CHANCE(0.5) ? 0 : 2;
+      u32 otherdir = dir ? 0 : 2;
+      if (CHANCE(0.95)) { FALL(ANTIMATTER); }
+      if ((bot[1] != NOTHING && bot[1] != ANTIMATTER && bot[1] != FIRE && bot[1] != ANTIMATTER2)
+          || (mid[dir] != NOTHING && mid[dir] != ANTIMATTER && mid[dir] != FIRE && mid[dir] != ANTIMATTER2)
+          || (mid[otherdir] != NOTHING && mid[otherdir] != ANTIMATTER && mid[otherdir] != FIRE && mid[otherdir] != ANTIMATTER2)
+          || (top[1] != NOTHING && top[1] != ANTIMATTER && top[1] != FIRE && top[1] != ANTIMATTER2)) {
+        bot[1] = mid[0] = mid[1] = mid[2] = top[1] = ANTIMATTER2;
+      }
+    } break;
+    case ANTIMATTER2:
+      if (CHANCE(0.5)) { mid[1] = FIRE; break; }
+      if (CHANCE(0.3)) { top[1] = mid[0] = mid[2] = bot[1] = ANTIMATTER2; break; }
+      break;
+    case CONCRETE:
+      if (CHANCE(0.01) && (SOLID[bot[1]] || SOLID[mid[0]] || SOLID[mid[2]] || SOLID[top[1]])) {
+        mid[1] = WALL; break; }
+      if (CHANCE(0.95)) { FALL(CONCRETE); }
       break;
     default:
       return 0;

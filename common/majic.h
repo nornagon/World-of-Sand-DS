@@ -24,8 +24,14 @@ typedef enum {
   SNOW,
   STEAM,
   CONDEN,
+  ACID,
+  LIQFIRE,
+  CONCRETE,
+  ANTIMATTER,
+  ANTIMATTER2,
   NUM_MATERIALS
 } MATERIAL;
+
 
 //#ifdef ARM7
 //#define ITCM_CODE
