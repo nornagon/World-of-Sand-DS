@@ -87,12 +87,12 @@ bool ACIDBURNT[NUM_MATERIALS] = {
   true, // MUD
 };
 
-#define FALL(mat) \
+#define FALL(mat) do { \
   if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = mat; break; } \
   if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = mat; break; } \
   if (bot[2] == NOTHING) { mid[1] = NOTHING; bot[2] = mat; break; } \
   if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = mat; break; } \
-  if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = mat; break; }
+  if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = mat; break; } } while (0)
 
 u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   u8* top = buf+(x-1)+(y-1)*256,
@@ -112,9 +112,11 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
       }
       break;
+
     case WATER:
       if (CHANCE(0.95)) { FALL(WATER); }
       break;
+
     case SWATER:
       if (CHANCE(0.95)) { FALL(SWATER); }
       if (bot[1] == WATER && CHANCE(0.5)) {
@@ -138,6 +140,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         }
       }
       break;
+
     case UNID:
       if (CHANCE(0.65)) {
         if (bot[1] != UNIDT && bot[1] != PLANT) bot[1] = UNID;
@@ -150,6 +153,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
     case UNIDT:
       if (CHANCE(0.02)) mid[1] = NOTHING;
       break;
+
     case CERA:
       if (CHANCE(0.99)) break;
       if (bot[1] == FIRE ||
@@ -171,6 +175,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       else if (bot[2] == NOTHING) bot[2] = CERA2, mid[1] = NOTHING;
       else mid[1] = CERA; // dry
       break;
+
     case FIRE:
       if (CHANCE(0.5)) {
         // rand between 0 and 2, weighted double for 1
@@ -201,6 +206,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         if (bot[1] == SWATER) { bot[1] = STEAM; mid[1] = SALT; break; }
       }
       break;
+
     case PLANT:
       if (CHANCE(0.2)) {
         // burn
@@ -228,6 +234,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       if (CHANCE(0.1) && top[1] == WATER) top[1] = PLANT;
       if (CHANCE(0.1) && bot[1] == WATER) bot[1] = PLANT;
       break;
+
     case SMOKE:
       if (CHANCE(0.4)) {
         if (CHANCE(0.6)) {
@@ -243,6 +250,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       }
       if (CHANCE(0.01)) { mid[1] = ASH; break; }
       break;
+
     case ASH:
       if (CHANCE(0.8)) {
         if (CHANCE(0.5)) {
@@ -258,10 +266,19 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
               { mid[1] = bot[0]; bot[0] = ASH; break; }
           }
         }
+
+        if (bot[1] == WATER) { bot[1] = MUD; mid[1] = NOTHING; break; }
+        if (bot[0] == WATER) { bot[0] = MUD; mid[1] = NOTHING; break; }
+        if (bot[2] == WATER) { bot[2] = MUD; mid[1] = NOTHING; break; }
+        if (mid[0] == WATER) { mid[0] = MUD; mid[1] = NOTHING; break; }
+        if (mid[2] == WATER) { mid[2] = MUD; mid[1] = NOTHING; break; }
+        if (top[1] == WATER) { top[1] = MUD; mid[1] = NOTHING; break; }
+
         if (bot[1] == NOTHING || LIQUID[bot[1]])
           { mid[1] = bot[1]; bot[1] = ASH; break; }
       }
       break;
+
     case SPOUT:
       if (CHANCE(0.05)) {
         if (top[1] == NOTHING) top[1] = WATER;
@@ -277,6 +294,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       if (mid[2] == SAND) mid[1] = SAND;
       if (bot[1] == SAND) mid[1] = SAND;
       break;
+
     case OIL:
       if (CHANCE(0.25))
         if (bot[1] == FIRE ||
@@ -298,6 +316,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         if (mid[0] == WATER) { mid[0] = OIL; mid[1] = WATER; break; }
       }
       break;
+
     case SALT:
       if (CHANCE(0.95)) { FALL(SALT); }
       if (CHANCE(0.9)) {
@@ -309,6 +328,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         mid[1] = NOTHING;
       }
       break;
+
     case SNOW:
       if ((bot[1] == FIRE || mid[0] == FIRE || mid[2] == FIRE || top[1] == FIRE)
           && CHANCE(0.95)) {
@@ -348,6 +368,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         mid[1] = NOTHING; break;
       }*/
       break;
+
     case STEAM:
       if (CHANCE(0.5)) {
         // rise up
@@ -375,6 +396,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
           (top[1] != WALL && top[1] != PLANT && top[1] != CERA)) {
         mid[1] = WATER; break; }
       break;
+
     case ACID:
       if (CHANCE(0.95)) { FALL(ACID); }
       if (bot[1] == LIQFIRE) { mid[1] = NOTHING; bot[1] = ANTIMATTER; break; }
@@ -404,11 +426,13 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         }
       }
       break;
+
     case LIQFIRE:
       if (CHANCE(0.95)) { FALL(LIQFIRE); }
       if (CHANCE(0.7) && top[1] == NOTHING) top[1] = FIRE; break;
       if (CHANCE(0.1)) mid[1] = NOTHING; break; // fizzle out
       break;
+
     case ANTIMATTER: {
       u32 dir = CHANCE(0.5) ? 0 : 2;
       u32 otherdir = dir ? 0 : 2;
@@ -424,12 +448,18 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       if (CHANCE(0.5)) { mid[1] = FIRE; break; }
       if (CHANCE(0.3)) { top[1] = mid[0] = mid[2] = bot[1] = ANTIMATTER2; break; }
       break;
+
     case CONCRETE:
       if (CHANCE(0.01) && (SOLID[bot[1]] || SOLID[mid[0]] || SOLID[mid[2]] || SOLID[top[1]])) {
         mid[1] = WALL; break; }
       if (CHANCE(0.95)) { FALL(CONCRETE); }
       break;
-    default:
+
+    case MUD:
+      if (CHANCE(0.95)) { FALL(MUD); }
+      break;
+
+    default: // NOTHING, WALL; return 0 for means of particount
       return 0;
   }
   return 1;
