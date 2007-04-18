@@ -29,6 +29,7 @@ typedef enum {
   CONCRETE,
   ANTIMATTER,
   ANTIMATTER2,
+  MUD,
   NUM_MATERIALS
 } MATERIAL;
 

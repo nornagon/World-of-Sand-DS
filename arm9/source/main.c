@@ -307,6 +307,7 @@ int main(void) {
   BG_PALETTE[CONCRETE] = RGB15(18,18,18);
   BG_PALETTE[ANTIMATTER] = RGB15(1,4,1);
   BG_PALETTE[ANTIMATTER2] = RGB15(31,9,9);
+  BG_PALETTE[MUD] = RGB15(22,7,0);
 
   // --**ooOO- Sub BG -OOoo**--
 
@@ -320,18 +321,22 @@ int main(void) {
   //memset32(BG_MAP_RAM_SUB(31), 0, 32*32/4);
 
   // load brush tiles
+  //
+  // v-- gbfs code
   //u32 len = 0;
   //u16* data = (u16*) gbfs_get_obj(gbfs_file, "brushes.bin", &len);
-  memcpy32(BG_GFX_SUB, brushes_bin, brushes_bin_size>>2);
   //data = (u16*) gbfs_get_obj(gbfs_file, "brushes.pal.bin", &len);
+  //
+  // v-- not gbfs code
+  memcpy32(BG_GFX_SUB, brushes_bin, brushes_bin_size>>2);
   memcpy16(BG_PALETTE_SUB, brushes_pal_bin, brushes_pal_bin_size>>1);
 
   // --**ooOO- Selectors -OOoo**--
 
   // load selector sprite
   //data = (u16*) gbfs_get_obj(gbfs_file, "selector.bin", &len);
-  memcpy32(SPRITE_GFX_SUB, selector_bin, selector_bin_size>>2);
   //data = (u16*) gbfs_get_obj(gbfs_file, "selector.pal.bin", &len);
+  memcpy32(SPRITE_GFX_SUB, selector_bin, selector_bin_size>>2);
   memcpy16(SPRITE_PALETTE_SUB, selector_pal_bin, selector_pal_bin_size>>1);
 
   SpriteRotation *selectorrot = &oam_back_rot[0];
@@ -379,18 +384,19 @@ int main(void) {
   int touched_last = 0;
   s16 lastx=0,lasty=0;
   swiWaitForVBlank(); // wait for things to settle down (hopefully)
-  init_genrand(*((u32*)IPC->curtime));
+  init_genrand(*((u32*)IPC->curtime)); // XXX: danger will robinson; IPC is to be removed
 	while (1) {
     if (particount < 700)
       swiWaitForVBlank();
     { // zot the sprite backbuffer to OAM
+      // FIXME: um, why isn't this a loop? ISTR it not working that way for some weeeeird reason
       ((SpriteRotation*)OAM_SUB)[0] = oam_back_rot[0];
       ((SpriteRotation*)OAM_SUB)[1] = oam_back_rot[1];
       //((SpriteRotation*)OAM_SUB)[2] = oam_back_rot[2];
       //((SpriteRotation*)OAM_SUB)[3] = oam_back_rot[3];
     }
 
-		touch=touchReadXY();
+		touch = touchReadXY();
     scanKeys();
     u32 held = keysHeld(),
         pressed = keysDown();

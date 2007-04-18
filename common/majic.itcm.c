@@ -28,6 +28,7 @@ bool LIQUID[NUM_MATERIALS] = {
   true, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
+  false, // MUD
 };
 
 bool SOLID[NUM_MATERIALS] = {
@@ -55,6 +56,7 @@ bool SOLID[NUM_MATERIALS] = {
   false, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
+  false, // MUD
 };
 
 bool ACIDBURNT[NUM_MATERIALS] = {
@@ -82,6 +84,7 @@ bool ACIDBURNT[NUM_MATERIALS] = {
   true, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
+  true, // MUD
 };
 
 #define FALL(mat) \
@@ -254,10 +257,9 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
             if (bot[0] == NOTHING || LIQUID[bot[0]])
               { mid[1] = bot[0]; bot[0] = ASH; break; }
           }
-        } else {
-          if (bot[1] == NOTHING || LIQUID[bot[1]])
-            { mid[1] = bot[1]; bot[1] = ASH; break; }
         }
+        if (bot[1] == NOTHING || LIQUID[bot[1]])
+          { mid[1] = bot[1]; bot[1] = ASH; break; }
       }
       break;
     case SPOUT:
@@ -348,14 +350,21 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       break;
     case STEAM:
       if (CHANCE(0.5)) {
+        // rise up
         if (top[1] == NOTHING || LIQUID[top[1]]) {
           mid[1] = top[1]; top[1] = STEAM; break; }
         if (top[0] == NOTHING || LIQUID[top[0]]) {
           mid[1] = top[0]; top[0] = STEAM; break; }
-        if (top[2] == NOTHING || LIQUID[top[2]]) {
+        if (top[2] == NOTHING || LIQUID[top[2]]) {   // ivy :)
           mid[1] = top[2]; top[2] = STEAM; break; }
         if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
         if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+
+        // ash turns steam into water... TODO: mud?
+        if (top[1] == ASH) { mid[1] = WATER; break; }
+        if (mid[0] == ASH) { mid[1] = WATER; break; }
+        if (mid[2] == ASH) { mid[1] = WATER; break; }
+        if (bot[1] == ASH) { mid[1] = WATER; break; }
       } else if (CHANCE(0.2) &&
           (top[1] == WALL || top[1] == CERA || top[1] == PLANT)) {
         mid[1] = CONDEN;
@@ -368,26 +377,30 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       break;
     case ACID:
       if (CHANCE(0.95)) { FALL(ACID); }
+      if (bot[1] == LIQFIRE) { mid[1] = NOTHING; bot[1] = ANTIMATTER; break; }
+      if (mid[0] == LIQFIRE) { mid[1] = NOTHING; mid[0] = ANTIMATTER; break; }
+      if (mid[2] == LIQFIRE) { mid[1] = NOTHING; mid[2] = ANTIMATTER; break; }
+      if (top[1] == LIQFIRE) { mid[1] = NOTHING; top[1] = ANTIMATTER; break; }
       if (CHANCE(0.5)) {
         register u32 dir = CHANCE(0.5) ? 0 : 2;
         register u32 otherdir = dir ? 0 : 2;
         if (ACIDBURNT[bot[1]]) {
-          mid[1] = NOTHING; bot[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          mid[1] = NOTHING; bot[1] = NOTHING; break; }
         if (ACIDBURNT[bot[dir]]) {
-          mid[1] = NOTHING; bot[dir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          mid[1] = NOTHING; bot[dir] = NOTHING; break; }
         if (ACIDBURNT[bot[otherdir]]) {
-          mid[1] = NOTHING; bot[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          mid[1] = NOTHING; bot[otherdir] = NOTHING; break; }
         if (ACIDBURNT[mid[dir]]) {
-          mid[1] = NOTHING; mid[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          mid[1] = NOTHING; mid[otherdir] = NOTHING; break; }
         if (ACIDBURNT[mid[otherdir]]) {
-          mid[1] = NOTHING; mid[otherdir] = CHANCE(0.01) ? SALT : NOTHING; break; }
+          mid[1] = NOTHING; mid[otherdir] = NOTHING; break; }
         if (CHANCE(0.1)) {
           if (ACIDBURNT[top[1]]) {
-            top[1] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+            top[1] = NOTHING; mid[1] = NOTHING; break; }
           if (ACIDBURNT[top[dir]]) {
-            top[dir] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+            top[dir] = NOTHING; mid[1] = NOTHING; break; }
           if (ACIDBURNT[top[otherdir]]) {
-            top[otherdir] = NOTHING; mid[1] = CHANCE(0.01) ? SALT : NOTHING; break; }
+            top[otherdir] = NOTHING; mid[1] = NOTHING; break; }
         }
       }
       break;
