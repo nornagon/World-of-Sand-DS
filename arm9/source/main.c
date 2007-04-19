@@ -105,6 +105,7 @@ static inline void addsome(MATERIAL type, u8* buf, u16 x) {
 }
 
 static inline void spawn(u8* buf) {
+  // magic constants signify x-value of centre of falls
   addsome(SAND, buf, 51);
   addsome(WATER, buf, 102);
   addsome(SALT, buf, 153);
@@ -380,6 +381,11 @@ int main(void) {
   u8 thickness = 0;
   u32 thicknesses[] = {2,4,6,8};
 
+  int sand_on = 1,
+      water_on = 1,
+      salt_on = 1,
+      oil_on = 1;
+
   u32 framecounter = 0;
   u32 particount = 0, fps = 0;
   int touched_last = 0;
@@ -453,17 +459,35 @@ int main(void) {
       }
     }
 
-    if (held & KEY_TOUCH) {
-      if (touch.px != 0 && touch.py != 0) { 
-        touched_last = 1;
-        lastx = touch.px;
-        lasty = touch.py;
+    if (held & KEY_L) {
+      if ((pressed & KEY_TOUCH) && (touch.py <= 7)) {
+        if (touch.px >= 45 && touch.px <= 57)
+          sand_on = !sand_on;
+        else if (touch.px >= 96 && touch.px <= 108)
+          water_on = !water_on;
+        else if (touch.px >= 147 && touch.px <= 159)
+          salt_on = !salt_on;
+        else if (touch.px >= 198 && touch.px <= 210)
+          oil_on = !oil_on;
       }
-    } else {
+    } else if (held & KEY_TOUCH) {
+      if (touch.px != 0 && touch.py != 0) { 
+        {
+          touched_last = 1;
+          lastx = touch.px;
+          lasty = touch.py;
+        }
+      }
+    }
+    if (!(held & KEY_TOUCH)) {
       touched_last = 0;
     }
 
-    spawn(buf);
+    if (sand_on) addsome(SAND, buf, 51);
+    if (water_on) addsome(WATER, buf, 102);
+    if (salt_on) addsome(SALT, buf, 153);
+    if (oil_on) addsome(OIL, buf, 204);
+
     particount = calculate(buf, inputbuf);
     memcpy32(BG_GFX, buf, (256*192)>>2);
 
