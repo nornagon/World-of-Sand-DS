@@ -369,6 +369,16 @@ int main(void) {
 
   memcpy16((u16*)CHAR_BASE_BLOCK_SUB(1), font_bin, font_bin_size>>1);
 
+  /********
+   * Help *
+   ********/
+
+  iprintf("\x1b[3;1HUse the arrow keys to select");
+  iprintf("\x1b[4;1Hmaterial. Use the X and Y keys");
+  iprintf("\x1b[5;1Hto change brush thickness.");
+  iprintf("\x1b[6;1HHold L and tap on the sources");
+  iprintf("\x1b[7;1Hto toggle them.");
+
   /*************
    * Main Loop *
    *************/
@@ -505,7 +515,7 @@ int main(void) {
     frames += 1;
     if (vblnks >= 60) {
       iprintf("\x1b[0;26H%2dfps", fps = (frames * 64 - frames * 4) / vblnks);
-      iprintf("\x1b[1;20H%10d", particount);
+      iprintf("\x1b[0;0HParticles: %5d", particount);
       vblnks = frames = 0;
     }
 	}
