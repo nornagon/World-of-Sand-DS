@@ -25,6 +25,7 @@ bool LIQUID[NUM_MATERIALS] = {
   false, // CONDEN
   true, // ACID
   true, // LIQFIRE
+  false, // TORCH
   true, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
@@ -53,6 +54,7 @@ bool SOLID[NUM_MATERIALS] = {
   false, // CONDEN
   false, // ACID
   false, // LIQFIRE
+  true, // TORCH
   false, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
@@ -81,18 +83,20 @@ bool ACIDBURNT[NUM_MATERIALS] = {
   false, // CONDEN
   false, // ACID
   false, // LIQFIRE
+  true, // TORCH
   true, // CONCRETE
   false, // ANTIMATTER
   false, // ANTIMATTER2
   true, // MUD
 };
 
-#define FALL(mat) do { \
+#define FALL(mat) \
   if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = mat; break; } \
   if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = mat; break; } \
   if (bot[2] == NOTHING) { mid[1] = NOTHING; bot[2] = mat; break; } \
   if (mid[2] == NOTHING) { mid[1] = NOTHING; mid[2] = mat; break; } \
-  if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = mat; break; } } while (0)
+  if (mid[0] == NOTHING) { mid[1] = NOTHING; mid[0] = mat; break; }
+// XXX: We can't use the do { } while (0) trick here because the break needs to break the switch.
 
 u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   u8* top = buf+(x-1)+(y-1)*256,
@@ -105,11 +109,16 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   switch(mid[1]) {
     case SAND:
       if (CHANCE(0.95)) { FALL(SAND); }
-      else if (CHANCE(0.25)) {
+      if (CHANCE(0.25)) {
         // sink below water
         if (bot[1] == WATER) { bot[1] = SAND; mid[1] = WATER; break; }
-        if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
-        if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
+        if (CHANCE(0.5)) {
+          if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
+          if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
+        } else {
+          if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
+          if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
+        }
       }
       break;
 
@@ -429,8 +438,25 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
 
     case LIQFIRE:
       if (CHANCE(0.95)) { FALL(LIQFIRE); }
-      if (CHANCE(0.7) && top[1] == NOTHING) top[1] = FIRE; break;
-      if (CHANCE(0.1)) mid[1] = NOTHING; break; // fizzle out
+      if (CHANCE(0.7) && top[1] == NOTHING) { top[1] = FIRE; break; }
+      if (CHANCE(0.001)) { mid[1] = NOTHING; break; } // fizzle out
+      if (CHANCE(0.7)) {
+        if (bot[1] == CERA) { mid[1] = NOTHING; bot[1] = TORCH; break; }
+        if (mid[0] == CERA) { mid[1] = NOTHING; mid[0] = TORCH; break; }
+        if (mid[2] == CERA) { mid[1] = NOTHING; mid[2] = TORCH; break; }
+        if (top[1] == CERA) { mid[1] = NOTHING; top[1] = TORCH; break; }
+      }
+      break;
+    case TORCH:
+      if (CHANCE(0.75)) {
+        if (top[1] == NOTHING) { top[1] = FIRE; break; }
+        if (mid[0] == NOTHING) { mid[0] = FIRE; break; }
+        if (mid[2] == NOTHING) { mid[2] = FIRE; break; }
+      }
+      if (top[1] == SAND) { mid[1] = NOTHING; break; }
+      if (mid[0] == SAND) { mid[1] = NOTHING; break; }
+      if (mid[2] == SAND) { mid[1] = NOTHING; break; }
+      if (bot[1] == SAND) { mid[1] = NOTHING; break; }
       break;
 
     case ANTIMATTER: {
@@ -457,6 +483,17 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
 
     case MUD:
       if (CHANCE(0.95)) { FALL(MUD); }
+      if (CHANCE(0.25)) {
+        // sink below water
+        if (bot[1] == WATER) { bot[1] = MUD; mid[1] = WATER; break; }
+        if (CHANCE(0.5)) {
+          if (bot[0] == WATER) { bot[0] = MUD; mid[1] = WATER; break; }
+          if (bot[2] == WATER) { bot[2] = MUD; mid[1] = WATER; break; }
+        } else {
+          if (bot[2] == WATER) { bot[2] = MUD; mid[1] = WATER; break; }
+          if (bot[0] == WATER) { bot[0] = MUD; mid[1] = WATER; break; }
+        }
+      }
       break;
 
     default: // NOTHING, WALL; return 0 for means of particount

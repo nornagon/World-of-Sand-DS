@@ -26,6 +26,7 @@ typedef enum {
   CONDEN,
   ACID,
   LIQFIRE,
+  TORCH,
   CONCRETE,
   ANTIMATTER,
   ANTIMATTER2,
