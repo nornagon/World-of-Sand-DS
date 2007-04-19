@@ -125,7 +125,7 @@ void ITCM_CODE genrand_regen() {
 }
 
 /* generates a random number on [0,0xffffffff]-interval */
-unsigned long ITCM_CODE genrand_int32(void)
+unsigned long ITCM_CODE genrand_int32()
 {
     unsigned long y;
 

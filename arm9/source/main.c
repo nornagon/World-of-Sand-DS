@@ -364,8 +364,9 @@ int main(void) {
 
   SUB_BG1_CR = BG_TILE_BASE(1) | BG_MAP_BASE(29) | BG_PRIORITY(0) | BG_256_COLOR;
   BG_PALETTE_SUB[255] = RGB15(31,31,31);
+  BG_PALETTE_SUB[254] = RGB15(31,27,0);
 
-  consoleInit((u16*)font_bin, (u16*)CHAR_BASE_BLOCK_SUB(1), 95, 32, (u16*)SCREEN_BASE_BLOCK_SUB(29), CONSOLE_USE_COLOR255, 8);
+  consoleInit((u16*)font_bin, (u16*)CHAR_BASE_BLOCK_SUB(1), 102, 32, (u16*)SCREEN_BASE_BLOCK_SUB(29), CONSOLE_USE_COLOR255, 8);
 
   memcpy16((u16*)CHAR_BASE_BLOCK_SUB(1), font_bin, font_bin_size>>1);
 
@@ -374,9 +375,9 @@ int main(void) {
    ********/
 
   iprintf("\x1b[3;1HUse the arrow keys to select");
-  iprintf("\x1b[4;1Hmaterial. Use the X and Y keys");
+  iprintf("\x1b[4;1Hmaterial. Use the \x80 and \x81 keys");
   iprintf("\x1b[5;1Hto change brush thickness.");
-  iprintf("\x1b[6;1HHold L and tap on the sources");
+  iprintf("\x1b[6;1HHold \x82 and \x83\x84\x85 on the sources");
   iprintf("\x1b[7;1Hto toggle them.");
 
   /*************

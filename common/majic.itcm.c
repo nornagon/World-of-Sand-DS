@@ -1,8 +1,12 @@
 #include "majic.h"
 
-//#define CHANCE(n) (genrand_int8() < ((u32)((n)*0xff)))
+// this is a sneaky way of letting us use real probability values in our algos
+// (0 <= x <= 1) and having gcc convert it to integer arith at compile time.
 #define CHANCE(n) (genrand_int32() < ((u32)((n)*0xffffffff)))
 
+// these LUTs are faster than doing if (a || b || c || d || e...)
+
+// steam rises through it, ash falls through it, etc.
 bool LIQUID[NUM_MATERIALS] = {
   false, // NOTHING
   false, // SAND
@@ -32,6 +36,7 @@ bool LIQUID[NUM_MATERIALS] = {
   false, // MUD
 };
 
+// steam condenses on the bottom of it
 bool SOLID[NUM_MATERIALS] = {
   false, // NOTHING
   false, // SAND
@@ -61,6 +66,7 @@ bool SOLID[NUM_MATERIALS] = {
   false, // MUD
 };
 
+// acid burns through it
 bool ACIDBURNT[NUM_MATERIALS] = {
   false, // NOTHING
   true, // SAND
@@ -90,6 +96,9 @@ bool ACIDBURNT[NUM_MATERIALS] = {
   true, // MUD
 };
 
+// standard gravity, put here in a macro to save space
+// NOTE that you ABSOLUTELY MUST put braces around this. If you do not, the
+// gods will kill a kitten (and your code will break).
 #define FALL(mat) \
   if (bot[1] == NOTHING) { mid[1] = NOTHING; bot[1] = mat; break; } \
   if (bot[0] == NOTHING) { mid[1] = NOTHING; bot[0] = mat; break; } \
@@ -99,6 +108,8 @@ bool ACIDBURNT[NUM_MATERIALS] = {
 // XXX: We can't use the do { } while (0) trick here because the break needs to break the switch.
 
 u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
+  // the top and bottom rows of three pixels directly above and below (x,y)
+  // are loaded for easy access.
   u8* top = buf+(x-1)+(y-1)*256,
     * mid = buf+(x-1)+(y)*256,
     * bot = buf+(x-1)+(y+1)*256;
@@ -106,12 +117,13 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
   // mxm
   // bbb
   // px = mid[1]
-  switch(mid[1]) {
+  switch (mid[1]) {
     case SAND:
       if (CHANCE(0.95)) { FALL(SAND); }
       if (CHANCE(0.25)) {
         // sink below water
         if (bot[1] == WATER) { bot[1] = SAND; mid[1] = WATER; break; }
+        // don't favour one side over the other
         if (CHANCE(0.5)) {
           if (bot[0] == WATER) { bot[0] = SAND; mid[1] = WATER; break; }
           if (bot[2] == WATER) { bot[2] = SAND; mid[1] = WATER; break; }
@@ -136,7 +148,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       }
       if (CHANCE(0.3)) {
         // better sinking
-        if (CHANCE(0.5)) {
+        if (CHANCE(0.5)) { // direction-unweighted
           if (bot[0] == WATER) { bot[0] = SWATER; mid[1] = WATER; break; }
           if (bot[2] == WATER) { bot[2] = SWATER; mid[1] = WATER; break; }
           if (mid[2] == WATER) { mid[2] = SWATER; mid[1] = WATER; break; }
@@ -245,47 +257,49 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       break;
 
     case SMOKE:
-      if (CHANCE(0.4)) {
-        if (CHANCE(0.6)) {
-          if (CHANCE(0.5)) {
-            if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
-            if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
-          } else {
-            if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
-            if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
-          }
-        } else
-          if (top[1] == NOTHING) { top[1] = SMOKE; mid[1] = NOTHING; break; }
-      }
-      if (CHANCE(0.01)) { mid[1] = ASH; break; }
+      if (CHANCE(0.6)) break;
+      if (CHANCE(0.6)) {
+        if (CHANCE(0.5)) { // direction-neutral; float up
+          if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
+          if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
+        } else {
+          if (top[2] == NOTHING) { top[2] = SMOKE; mid[1] = NOTHING; break; }
+          if (top[0] == NOTHING) { top[0] = SMOKE; mid[1] = NOTHING; break; }
+        }
+      } else
+        if (top[1] == NOTHING) { top[1] = SMOKE; mid[1] = NOTHING; break; }
+
+      if (CHANCE(0.01)) { mid[1] = ASH; break; } // stop floating up
       break;
 
     case ASH:
-      if (CHANCE(0.8)) {
+      if (CHANCE(0.2)) break;
+
+      if (CHANCE(0.5)) {
         if (CHANCE(0.5)) {
-          if (CHANCE(0.5)) {
-            if (bot[0] == NOTHING || LIQUID[bot[0]])
-              { mid[1] = bot[0]; bot[0] = ASH; break; }
-            if (bot[2] == NOTHING || LIQUID[bot[2]])
-              { mid[1] = bot[2]; bot[2] = ASH; break; }
-          } else {
-            if (bot[2] == NOTHING || LIQUID[bot[2]])
-              { mid[1] = bot[2]; bot[2] = ASH; break; }
-            if (bot[0] == NOTHING || LIQUID[bot[0]])
-              { mid[1] = bot[0]; bot[0] = ASH; break; }
-          }
+          if (bot[0] == NOTHING || LIQUID[bot[0]])
+            { mid[1] = bot[0]; bot[0] = ASH; break; }
+          if (bot[2] == NOTHING || LIQUID[bot[2]])
+            { mid[1] = bot[2]; bot[2] = ASH; break; }
+        } else {
+          if (bot[2] == NOTHING || LIQUID[bot[2]])
+            { mid[1] = bot[2]; bot[2] = ASH; break; }
+          if (bot[0] == NOTHING || LIQUID[bot[0]])
+            { mid[1] = bot[0]; bot[0] = ASH; break; }
         }
-
-        if (bot[1] == WATER) { bot[1] = MUD; mid[1] = NOTHING; break; }
-        if (bot[0] == WATER) { bot[0] = MUD; mid[1] = NOTHING; break; }
-        if (bot[2] == WATER) { bot[2] = MUD; mid[1] = NOTHING; break; }
-        if (mid[0] == WATER) { mid[0] = MUD; mid[1] = NOTHING; break; }
-        if (mid[2] == WATER) { mid[2] = MUD; mid[1] = NOTHING; break; }
-        if (top[1] == WATER) { top[1] = MUD; mid[1] = NOTHING; break; }
-
-        if (bot[1] == NOTHING || LIQUID[bot[1]])
-          { mid[1] = bot[1]; bot[1] = ASH; break; }
       }
+
+      // ash + water = mud
+      if (bot[1] == WATER) { bot[1] = MUD; mid[1] = NOTHING; break; }
+      if (bot[0] == WATER) { bot[0] = MUD; mid[1] = NOTHING; break; }
+      if (bot[2] == WATER) { bot[2] = MUD; mid[1] = NOTHING; break; }
+      if (mid[0] == WATER) { mid[0] = MUD; mid[1] = NOTHING; break; }
+      if (mid[2] == WATER) { mid[2] = MUD; mid[1] = NOTHING; break; }
+      if (top[1] == WATER) { top[1] = MUD; mid[1] = NOTHING; break; }
+
+      // ash falls through liquids
+      if (bot[1] == NOTHING || LIQUID[bot[1]])
+        { mid[1] = bot[1]; bot[1] = ASH; break; }
       break;
 
     case SPOUT:
@@ -317,7 +331,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
       if (CHANCE(0.95)) {
         // rise above water
         if (top[1] == WATER) { top[1] = OIL; mid[1] = WATER; break; }
-        if (top[0] == WATER) { top[0] = OIL; mid[1] = WATER; break; }
+        if (top[0] == WATER) { top[0] = OIL; mid[1] = WATER; break; } // TODO: direction-neutrality
         if (top[2] == WATER) { top[2] = OIL; mid[1] = WATER; break; }
       }
       if (CHANCE(0.3)) {
@@ -328,7 +342,7 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
 
     case SALT:
       if (CHANCE(0.95)) { FALL(SALT); }
-      if (CHANCE(0.9)) {
+      if (CHANCE(0.9)) { // salt water creation
              if (bot[1] == WATER) bot[1] = SWATER;
         else if (top[1] == WATER) top[1] = SWATER;
         else if (mid[0] == WATER) mid[0] = SWATER;
@@ -341,10 +355,10 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
     case SNOW:
       if ((bot[1] == FIRE || mid[0] == FIRE || mid[2] == FIRE || top[1] == FIRE)
           && CHANCE(0.95)) {
-        mid[1] = WATER; break;
+        mid[1] = WATER; break; // melty
       }
-      if (CHANCE(0.95)) {
-        // gravity
+      if (CHANCE(0.9)) {
+        // floaty
         if (CHANCE(0.5)) {
                if (bot[0] == NOTHING) { bot[0] = SNOW; mid[1] = NOTHING; break; }
           else if (bot[2] == NOTHING) { bot[2] = SNOW; mid[1] = NOTHING; break; }
