@@ -22,7 +22,7 @@
 #include <nds.h>
 #include <nds/arm9/console.h> //basic print funcionality
 #include <nds/arm9/trig_lut.h>
-#include <gbfs.h>
+//#include <gbfs.h>
 
 #include "mem.h"
 
@@ -246,7 +246,10 @@ int main(void) {
   memset32(buf, REPEAT_U8_TO_U32(NOTHING), (256*192)>>2);
   memset32(inputbuf, REPEAT_U8_TO_U32(NUM_MATERIALS), (256*192)>>2);
   WRAM_CR = 0; // 32K to ARM9
-  memset32(WRAM, REPEAT_U8_TO_U32(NOTHING), (32*1024)>>2);
+  memset32((u32*)WRAM, REPEAT_U8_TO_U32(NOTHING), (32*1024)>>2);
+  /*int i;
+  for (i = 0; i < 9881; i++)
+    WRAM[i] = NOTHING;*/
 
   /********
    * IRQs *
@@ -402,7 +405,7 @@ int main(void) {
   int touched_last = 0;
   s16 lastx=0,lasty=0;
   swiWaitForVBlank(); // wait for things to settle down (hopefully)
-  init_genrand(*((u32*)IPC->curtime)); // XXX: danger will robinson; IPC is to be removed
+  init_genrand(*((u32*)IPC->time.curtime)); // XXX: danger will robinson; IPC is to be removed... or something
 	while (1) {
     if (particount < 700)
       swiWaitForVBlank();
@@ -419,7 +422,7 @@ int main(void) {
     u32 held = keysHeld(),
         pressed = keysDown();
 
-    if (touched_last) {
+    if (touched_last && touch.px != 0 && touch.py != 0) {
       bresenThick(inputbuf, lastx, lasty, touch.px, touch.py,
           brushes[selected], thicknesses[thickness] << 16);
       bresenCircle(inputbuf, lastx, lasty,
@@ -428,6 +431,7 @@ int main(void) {
           thicknesses[thickness] >> 1, brushes[selected]);
     }
 
+    // FIXME: all this key handling is a horrible mess
     if (pressed & KEY_LEFT) {
       if (selected % 4 != 0) {
         selected -= 1;
@@ -482,7 +486,7 @@ int main(void) {
           oil_on = !oil_on;
       }
     } else if (held & KEY_TOUCH) {
-      if (touch.px != 0 && touch.py != 0) { 
+      if (touch.px > 0 && touch.py > 0) {
         {
           touched_last = 1;
           lastx = touch.px;
@@ -516,7 +520,7 @@ int main(void) {
     frames += 1;
     if (vblnks >= 60) {
       iprintf("\x1b[0;26H%2dfps", fps = (frames * 64 - frames * 4) / vblnks);
-      iprintf("\x1b[0;0HParticles: %5d", particount);
+      iprintf("\x1b[0;0HParticles: %d", particount);
       vblnks = frames = 0;
     }
 	}
