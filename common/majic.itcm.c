@@ -397,14 +397,26 @@ u32 ITCM_CODE majic(u8* buf, u32 x, u32 y) {
         // rise up
         if (top[1] == NOTHING || LIQUID[top[1]]) {
           mid[1] = top[1]; top[1] = STEAM; break; }
-        if (top[0] == NOTHING || LIQUID[top[0]]) {
-          mid[1] = top[0]; top[0] = STEAM; break; }
-        if (top[2] == NOTHING || LIQUID[top[2]]) {   // ivy :)
-          mid[1] = top[2]; top[2] = STEAM; break; }
-        if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
-        if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+        if (CHANCE(0.5)) {
+          if (top[0] == NOTHING || LIQUID[top[0]]) {
+            mid[1] = top[0]; top[0] = STEAM; break; }
+          if (top[2] == NOTHING || LIQUID[top[2]]) {
+            mid[1] = top[2]; top[2] = STEAM; break; }
+        } else {
+          if (top[2] == NOTHING || LIQUID[top[2]]) {
+            mid[1] = top[2]; top[2] = STEAM; break; }
+          if (top[0] == NOTHING || LIQUID[top[0]]) {
+            mid[1] = top[0]; top[0] = STEAM; break; }
+        }
+        if (CHANCE(0.5)) {
+          if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+          if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+        } else {
+          if (mid[2] == NOTHING) { mid[2] = STEAM; mid[1] = NOTHING; break; }
+          if (mid[0] == NOTHING) { mid[0] = STEAM; mid[1] = NOTHING; break; }
+        }
 
-        // ash turns steam into water... TODO: mud?
+        // ash turns steam into water
         if (top[1] == ASH) { mid[1] = WATER; break; }
         if (mid[0] == ASH) { mid[1] = WATER; break; }
         if (mid[2] == ASH) { mid[1] = WATER; break; }
