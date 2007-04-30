@@ -38,6 +38,7 @@
 #include "selector_pal_bin.h"
 #include "map_bin.h"
 #include "font_bin.h"
+#include "title_bin.h"
 
 #include "majic.h"
 #include "comms.h"
@@ -247,9 +248,6 @@ int main(void) {
   memset32(inputbuf, REPEAT_U8_TO_U32(NUM_MATERIALS), (256*192)>>2);
   WRAM_CR = 0; // 32K to ARM9
   memset32((u32*)WRAM, REPEAT_U8_TO_U32(NOTHING), (32*1024)>>2);
-  /*int i;
-  for (i = 0; i < 9881; i++)
-    WRAM[i] = NOTHING;*/
 
   /********
    * IRQs *
@@ -317,13 +315,23 @@ int main(void) {
   // --**ooOO- Sub BG -OOoo**--
 
   videoSetModeSub(MODE_0_2D | DISPLAY_BG0_ACTIVE | DISPLAY_BG1_ACTIVE |
-                  DISPLAY_SPR_ACTIVE | DISPLAY_SPR_1D);
+      DISPLAY_BG2_ACTIVE | DISPLAY_SPR_ACTIVE | DISPLAY_SPR_1D);
   vramSetBankC(VRAM_C_SUB_BG);
   vramSetBankD(VRAM_D_SUB_SPRITE);
 
   SUB_BG0_CR = BG_TILE_BASE(0) | BG_MAP_BASE(31) | BG_32x32 | BG_256_COLOR |
     BG_PRIORITY(2);
-  //memset32(BG_MAP_RAM_SUB(31), 0, 32*32/4);
+
+  // --**ooOO- Background image -OOoo**--
+
+  SUB_BG2_CR = BG_TILE_BASE(4) | BG_MAP_BASE(27) | BG_32x32 | BG_256_COLOR |
+    BG_PRIORITY(3);
+  memcpy32(BG_TILE_RAM_SUB(4), title_bin, title_bin_size>>2);
+  int i;
+  for (i = 0; i < 32*24; i++) {
+    ((u16*)BG_MAP_RAM_SUB(27))[i] = i;
+  }
+
 
   // load brush tiles
   //
@@ -373,15 +381,6 @@ int main(void) {
 
   memcpy16((u16*)CHAR_BASE_BLOCK_SUB(1), font_bin, font_bin_size>>1);
 
-  /********
-   * Help *
-   ********/
-
-  iprintf("\x1b[3;1HUse the arrow keys to select");
-  iprintf("\x1b[4;1Hmaterial. Use the \x80 and \x81 keys");
-  iprintf("\x1b[5;1Hto change brush thickness.");
-  iprintf("\x1b[6;1HHold \x82 and \x83\x84\x85 on the sources");
-  iprintf("\x1b[7;1Hto toggle them.");
 
   /*************
    * Main Loop *
@@ -519,8 +518,8 @@ int main(void) {
 
     frames += 1;
     if (vblnks >= 60) {
-      iprintf("\x1b[0;26H%2dfps", fps = (frames * 64 - frames * 4) / vblnks);
-      iprintf("\x1b[0;0HParticles: %d", particount);
+      iprintf("\x1b[14;14H%2dfps", fps = (frames * 64 - frames * 4) / vblnks);
+      iprintf("\x1b[12;14HParticles: %d", particount);
       vblnks = frames = 0;
     }
 	}
