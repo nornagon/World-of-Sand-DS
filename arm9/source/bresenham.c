@@ -103,16 +103,37 @@ void bresenCircle(u8* buf, s32 cx, s32 cy, s32 r, u8 val) {
   while (x >= y) {
     tx1 = cx-x;
     tx2 = cx-y;
-    if (tx1 < 0) tx1 = 0;
-    if (tx2 > 255) tx2 = 255;
+
+    int xp = 2*x, yp = 2*y;
+
+    if (tx1 < 0) {
+    	xp += tx1;
+    	tx1 = 0;
+		} else if (tx1 > 255) {
+			tx1 = 255;
+			xp = 0;
+		}
+    if (tx2 < 0) {
+    	yp += tx2;
+    	tx2 = 0;
+		} else if (tx2 > 255) {
+			tx2 = 255;
+			xp = 0;
+		}
+
+    if (tx1 + xp > 255)
+    	xp = 255 - tx1;
+    if (tx2 + yp > 255)
+    	yp = 255 - tx2;
+
     if ((ty = cy+y-1) > 0)
-      memset(buf+tx1+256*ty, val, 2*x);
+      memset(buf+tx1+256*ty, val, xp);
     if ((ty = cy-y) > 0)
-      memset(buf+tx1+256*ty, val, 2*x);
+      memset(buf+tx1+256*ty, val, xp);
     if ((ty = cy+x-1) > 0)
-      memset(buf+tx2+256*ty, val, 2*y);
+      memset(buf+tx2+256*ty, val, yp);
     if ((ty = cy-x) > 0)
-      memset(buf+tx2+256*ty, val, 2*y);
+      memset(buf+tx2+256*ty, val, yp);
     y++;
     raderr += ychg;
     ychg += 2;
